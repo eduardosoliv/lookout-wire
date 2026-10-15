@@ -170,6 +170,17 @@ crossed:
 - With a Gemini key, a short explanation follows, then up to three source names:
   `Sources: reuters.com, cnbc.com`.
 
+A complete alert as sent on 2026-10-15, with a Gemini key:
+
+```
+*AVGO* (Broadcom Inc.) $344.29
+🔥 Buy 1.63% below $350.00
+
+Broadcom (AVGO) is trading lower today as part of a broader sell-off across semiconductor and AI-linked stocks, triggered by renewed macroeconomic inflation worries. Pressure also mounted after investors raised concerns over the financing models of the AI buildout, specifically the credit and balance-sheet risks tied to large structured deals for custom-chip customers. Additionally, market caution regarding heavy AI capital commitments and customer concentration prompted profit-taking across the sector. Analysts view the dip largely as sector-wide sentiment pullback rather than an issue with Broadcom's core operations or cash generation.
+
+Sources: shattered.io, theguardian.com, tradingview.com
+```
+
 ## Alert rules
 
 - A level alerts the first time the price trades below it.
