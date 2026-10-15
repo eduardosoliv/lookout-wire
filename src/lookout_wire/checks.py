@@ -109,9 +109,10 @@ def _duplicates(entries: list[Entry]) -> list[str]:
 
 
 def _summary(entries: list[Entry]) -> str:
-    with_buy = sum(1 for entry in entries if entry.buy is not None)
-    dip_only = len(entries) - with_buy
-    return f"{len(entries)} tickers: {with_buy} with a Buy level, {dip_only} with a Dip level only"
+    both = sum(1 for entry in entries if entry.buy is not None)
+    dip_only = len(entries) - both
+    counts = f"{both} with a Dip & Buy level, {dip_only} with a Dip level only"
+    return f"{len(entries)} tickers: {counts}"
 
 
 def whatsapp_client(

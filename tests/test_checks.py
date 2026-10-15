@@ -235,7 +235,7 @@ def test_watchlist_check_counts_tickers(tmp_path):
 
     assert result.ok
     assert "Watchlist: OK" in text
-    assert "2 tickers: 1 with a Buy level, 1 with a Dip level only" in text
+    assert "2 tickers: 1 with a Dip & Buy level, 1 with a Dip level only" in text
 
 
 def test_watchlist_check_reports_buy_not_below_dip(tmp_path):
