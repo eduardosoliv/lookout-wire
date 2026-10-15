@@ -21,6 +21,103 @@ On first start the app asks you to send any message to your agent in WhatsApp. I
 id from that message, replies with a greeting, and starts watching prices. It remembers the
 pairing, so later starts skip this step. Stop it with Ctrl-C.
 
+Each external service needs a one-time setup first; see the next section.
+
+## External services
+
+The agent uses three services. WhatsApp and Alpaca are required; Gemini is optional. Every key
+goes in `.env`, which is gitignored.
+
+### WhatsApp: where alerts arrive
+
+The agent uses WhatsApp's third-party agents feature, which is still rolling out in 2026.
+
+1. In WhatsApp, open **Settings > Agents > Create an agent**, and give it a name and a photo.
+2. Open the agent's chat, then **Chat info > API key**, and copy the key.
+3. Put it in `.env` as `LOOKOUT_WHATSAPP_TOKEN`.
+4. Run `just run` and send the agent any message when the log asks. The agent learns your id from
+   that message and replies with a greeting.
+
+Quirks:
+
+- **Only you can chat with your agent.** It cannot message anyone else, and you can have up to five
+  agents.
+- **Agent chats are not end-to-end encrypted.** A Meta service handles them, so Meta can see
+  your alerts and the levels in them.
+- **Regenerating the key, or reinstalling WhatsApp, invalidates the old key.** The agent then
+  stops with an error naming `LOOKOUT_WHATSAPP_TOKEN`. Paste the new key into `.env` and restart.
+- **Pairing ignores messages sent before the agent started.** If it waits for pairing, send a new
+  message.
+- **Your id can change** if you change phone number. The agent notices the rejection and asks to
+  pair again.
+- **WhatsApp allows about 12 messages a minute per agent.** The agent spaces sends about 5 seconds
+  apart.
+- **Unverified:** whether WhatsApp delivers a message when you haven't written to the agent for
+  over 24 hours. Live check 2 below tests this.
+- `just whatsapp-id` and `just whatsapp-send` check the setup. Pass message text as a plain second
+  argument: `just whatsapp-send user:123 "hello"`, not `message="hello"`, which would be sent
+  literally.
+
+### Alpaca: where prices come from
+
+1. Create a free account at [alpaca.markets](https://alpaca.markets).
+2. In the dashboard, switch to your **paper trading** account and generate an API key and secret.
+3. Put them in `.env` as `LOOKOUT_ALPACA_KEY_ID` and `LOOKOUT_ALPACA_SECRET_KEY`.
+4. Run `just check-alpaca`; both lines should say OK.
+
+Quirks:
+
+- **Use paper keys.** They serve market data just as well as live keys, and a leaked paper key
+  cannot trade real money. Paper keys were confirmed to work for prices on 2026-10-15.
+- **Live keys need a different trading host.** Set
+  `LOOKOUT_ALPACA_TRADING_URL=https://api.alpaca.markets` in `.env`, or the market-clock check
+  fails.
+- **The free plan only has IEX prices.** IEX is one exchange, so a thinly traded stock's latest
+  trade can be minutes old. The agent counts only trades inside today's regular session.
+- **The latest trade outside market hours is an after-hours price.** The running agent ignores
+  it; `just scan` uses it.
+- **The free plan allows 200 requests a minute.** The agent uses about 12: one price request and
+  one clock request every 10 seconds.
+
+### Gemini: why a stock is down (optional)
+
+1. Go to [aistudio.google.com](https://aistudio.google.com), click **Get API key**, then **Create
+   API key**.
+2. **Set up billing on the project.** Google's free tier does not include Google Search
+   grounding, which the explanations need.
+3. Set a **project spend cap** in AI Studio, for example $5 a month.
+4. Put the key in `.env` as `LOOKOUT_GEMINI_API_KEY`.
+5. Run `just scan`. If no "Gemini explanation failed" warning appears, explanations work.
+
+Quirks:
+
+- **The free tier does not work, even though the model looks free.** Every request fails with
+  `HTTP 429 RESOURCE_EXHAUSTED: You exceeded your current quota` from the very first one, because
+  the free tier gives zero quota for search grounding. The rate-limit page shows the model with
+  free quota, which is misleading. Attaching billing fixes it.
+- **Cost:** search grounding costs about $14 per 1,000 searches, roughly 1.4 cents per alert. The
+  model's own cost for a short answer is a small fraction of that, so a cheaper "Lite" model saves
+  almost nothing.
+- **Free-tier requests may be used to improve Google's products.** They include your tickers and
+  levels. Paid-tier requests are not used that way.
+- **The spend cap is enforced with about a 10-minute delay.** Usage in that window is still billed.
+- **Model names change.** The default is `gemini-3.8-flash`. Google retired two Flash models in
+  2026, so if requests fail with `HTTP 404 NOT_FOUND`, list the models your key can use and set
+  `LOOKOUT_GEMINI_MODEL`:
+
+  ```bash
+  uv run python -c "
+  from google import genai
+  from lookout_wire.core.settings import load_settings
+  client = genai.Client(api_key=load_settings().gemini_api_key.get_secret_value())
+  print([m.name for m in client.models.list() if 'flash' in m.name])
+  "
+  ```
+
+- **When Gemini fails, the alert still arrives,** just without the explanation, and the log says
+  why.
+- **Unverified:** whether the source links are Google redirect URLs or the publishers' own URLs.
+
 ## Commands
 
 Run `just` to list every recipe.
