@@ -28,6 +28,7 @@ Run `just` to list every recipe.
 |---|---|
 | `just install` | Install dependencies into `.venv` |
 | `just run` | Start the agent |
+| `just scan` | Message every ticker below its Dip or Buy level right now, market open or not, then exit |
 | `just check` | Lint, format check, and tests: run before every commit |
 | `just test` | Run the tests; extra arguments go to pytest, e.g. `just test -k rules` |
 | `just fix` | Fix what ruff can fix, then format |
@@ -107,6 +108,19 @@ To add a capability, create a package under `capabilities/`, give it a factory t
 and ports, register it in `CAPABILITIES` in `main.py`, and enable it with
 `LOOKOUT_ENABLED_CAPABILITIES='["watchlist", "your_name"]'`. The loop calls its `run(now)` every
 tick; the capability decides for itself whether there is work to do.
+
+## Scan now
+
+`just scan` reads the watchlist, fetches the latest trade for every ticker whether the market is
+open or not, and sends one message per ticker below its Dip or Buy level, then prints a summary:
+
+```
+Sent (2): NVDA, MSFT
+Above their levels, nothing sent (43): AAPL, ...
+```
+
+It ignores alerts already sent and never changes the agent's saved alert state, so the agent's
+own alerts still fire normally. Sends are spaced about 5 seconds apart to respect WhatsApp's limit.
 
 ## Alert rules
 

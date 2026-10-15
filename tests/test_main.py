@@ -68,3 +68,25 @@ def test_fatal_error_while_building_exits_with_code_1(tmp_path, monkeypatch):
         main.main()
 
     assert exit_info.value.code == 1
+
+
+def test_scan_command_runs_one_scan_and_prints_the_summary(tmp_path, monkeypatch, capsys):
+    from datetime import UTC, datetime
+
+    from lookout_wire.core.ports import Ports, Trade
+    from tests.fakes import FakeCalendar, FakeClock, FakeExplainer, FakeMessenger, FakePriceSource
+
+    now = datetime(2026, 10, 15, 22, 30, tzinfo=UTC)
+    messenger = FakeMessenger()
+    prices = FakePriceSource({"AAPL": Trade(149.0, now)})
+    ports = Ports(
+        prices, FakeCalendar(), messenger, FakeExplainer(), tmp_path / "state", FakeClock(now)
+    )
+    monkeypatch.setattr(main, "load_settings", lambda: settings(tmp_path))
+    monkeypatch.setattr(main, "configure_logging", lambda: None)
+    monkeypatch.setattr(main, "build_ports", lambda settings, stop: ports)
+
+    main.main(["scan"])
+
+    assert len(messenger.sent) == 1
+    assert "Sent (1): AAPL" in capsys.readouterr().out

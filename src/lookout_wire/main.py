@@ -1,16 +1,20 @@
 """Entry point: load settings, build enabled capabilities, run the loop until stopped."""
 
 import logging
+import sys
 import threading
+from collections.abc import Sequence
 
 from lookout_wire.adapters.alpaca import AlpacaCalendar, AlpacaPriceSource
 from lookout_wire.adapters.gemini import build_explainer
 from lookout_wire.adapters.whatsapp import WhatsAppMessenger
 from lookout_wire.capabilities.watchlist.capability import build_watchlist
+from lookout_wire.capabilities.watchlist.config import WatchlistFile
+from lookout_wire.capabilities.watchlist.scan import describe, scan
 from lookout_wire.core.capability import Capability, CapabilityFactory, FatalError
 from lookout_wire.core.log import configure_logging
 from lookout_wire.core.loop import Loop, install_signal_handlers, utc_now
-from lookout_wire.core.ports import Ports
+from lookout_wire.core.ports import Ports, PriceError
 from lookout_wire.core.registry import Registry, UnknownCapabilityError
 from lookout_wire.core.settings import Settings, SettingsError, load_settings
 
@@ -19,13 +23,17 @@ log = logging.getLogger("lookout_wire")
 CAPABILITIES: dict[str, CapabilityFactory] = {"watchlist": build_watchlist}
 
 
-def main() -> None:
+def main(argv: Sequence[str] | None = None) -> None:
+    args = sys.argv[1:] if argv is None else list(argv)
     configure_logging()
     try:
         settings = load_settings()
     except SettingsError as error:
         log.error("%s", error)
         raise SystemExit(2) from None
+    if args == ["scan"]:
+        run_scan(settings)
+        return
 
     stop = threading.Event()
     install_signal_handlers(stop)
@@ -45,6 +53,19 @@ def main() -> None:
         log.error("Stopping: %s", error)
         raise SystemExit(1) from None
     log.info("Stopped")
+
+
+def run_scan(settings: Settings) -> None:
+    """Messages every ticker below a level right now, then exits. Alert state is untouched."""
+    try:
+        ports = build_ports(settings, threading.Event())
+        report = scan(WatchlistFile(settings.watchlist_path), ports)
+    except (FatalError, PriceError) as error:
+        log.error("Scan stopped: %s", error)
+        raise SystemExit(1) from None
+    print(describe(report))
+    if report.failed:
+        raise SystemExit(1)
 
 
 def build_capabilities(settings: Settings, stop: threading.Event) -> list[Capability]:

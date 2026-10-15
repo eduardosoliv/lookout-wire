@@ -12,6 +12,10 @@ install:
 run:
     uv run lookout-wire
 
+# Message every ticker below its Dip or Buy level right now, market open or not, then exit
+scan:
+    uv run lookout-wire scan
+
 # Run the tests; extra arguments go to pytest, e.g. `just test -k rules`
 test *args:
     uv run pytest {{ args }}
