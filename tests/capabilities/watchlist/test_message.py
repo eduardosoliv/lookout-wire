@@ -11,14 +11,14 @@ BUY = Alert(Kind.BUY, 130.0, AlertKind.NEW_LOW, 128.0)
 def test_header_names_ticker_price_level_and_percentage_below():
     text = render("AAPL", 149.8, [DIP], None)
 
-    assert text == "AAPL 149.80\nDip 150.00 crossed, 0.13% below"
+    assert text == "AAPL 149.80\n⚠️ Dip 150.00 crossed, 0.13% below"
 
 
 def test_both_levels_get_their_own_line_with_kind_label():
     text = render("NVDA", 128.0, [DIP, BUY], None)
 
-    assert "Dip 150.00 crossed" in text
-    assert "Buy 130.00 new low, 1.54% below" in text
+    assert "⚠️ Dip 150.00 crossed" in text
+    assert "🔥 Buy 130.00 new low, 1.54% below" in text
 
 
 def test_explanation_and_links_follow_the_header():
@@ -37,7 +37,7 @@ def test_long_explanation_is_cut_so_the_message_fits_and_header_survives():
     text = render("AAPL", 149.8, [DIP], explanation)
 
     assert len(text) <= MAX_LENGTH
-    assert text.startswith("AAPL 149.80\nDip 150.00 crossed")
+    assert text.startswith("AAPL 149.80\n⚠️ Dip 150.00 crossed")
     assert text.endswith("https://a.test/1")
 
 

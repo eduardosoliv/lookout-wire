@@ -3,11 +3,12 @@
 from collections.abc import Sequence
 from datetime import date
 
-from lookout_wire.capabilities.watchlist.rules import Alert, AlertKind
+from lookout_wire.capabilities.watchlist.rules import Alert, AlertKind, Kind
 from lookout_wire.core.ports import Explanation
 
 MAX_LENGTH = 4096
 LABELS = {AlertKind.CROSSED: "crossed", AlertKind.NEW_LOW: "new low"}
+ICONS = {Kind.DIP: "⚠️", Kind.BUY: "🔥"}
 
 
 def render(
@@ -32,7 +33,7 @@ def build_question(symbol: str, price: float, alerts: Sequence[Alert], day: date
 
 
 def _level_line(alert: Alert, price: float) -> str:
-    name = alert.kind.value.capitalize()
+    name = f"{ICONS[alert.kind]} {alert.kind.value.capitalize()}"
     label = LABELS[alert.alert]
     return f"{name} {alert.level:.2f} {label}, {_percent_below(alert.level, price)} below"
 

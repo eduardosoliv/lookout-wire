@@ -89,7 +89,7 @@ def test_covers_ae1_crossing_sends_one_message_and_persists_disarmed(world):
 
     world.capability().run(NOW)
 
-    assert world.messenger.sent == ["AAPL 149.80\nDip 150.00 crossed, 0.13% below"]
+    assert world.messenger.sent == ["AAPL 149.80\n⚠️ Dip 150.00 crossed, 0.13% below"]
     level = world.level()
     assert (level.armed, level.baseline, level.last_message_day) == (False, 149.8, TODAY)
     assert world.markers() == {}
@@ -102,7 +102,7 @@ def test_covers_ae2_both_levels_crossing_send_one_message(tmp_path):
     world.capability().run(NOW)
 
     assert len(world.messenger.sent) == 1
-    assert "Dip 150.00" in world.messenger.sent[0] and "Buy 130.00" in world.messenger.sent[0]
+    assert "⚠️ Dip 150.00" in world.messenger.sent[0] and "🔥 Buy 130.00" in world.messenger.sent[0]
 
 
 def test_explanation_is_attached_when_available(world):
@@ -121,7 +121,7 @@ def test_covers_ae9_failed_explanation_still_sends_the_alert(world):
 
     world.capability().run(NOW)
 
-    assert world.messenger.sent == ["AAPL 149.80\nDip 150.00 crossed, 0.13% below"]
+    assert world.messenger.sent == ["AAPL 149.80\n⚠️ Dip 150.00 crossed, 0.13% below"]
 
 
 def test_covers_ae10_closed_session_fetches_nothing_and_sends_nothing(world):
