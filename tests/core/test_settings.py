@@ -79,3 +79,11 @@ def test_repr_masks_every_secret(env):
 
     for value in [*REQUIRED.values(), "gemini-value"]:
         assert value not in text
+
+
+def test_loop_runs_every_120_seconds_by_default(env):
+    for name, value in REQUIRED.items():
+        env.setenv(name, value)
+    env.delenv("LOOKOUT_INTERVAL_SECONDS", raising=False)
+
+    assert load_settings().interval_seconds == 120

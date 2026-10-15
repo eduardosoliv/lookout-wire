@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     gemini_api_key: SecretStr | None = None
     gemini_model: str = "gemini-3.8-flash"
 
-    interval_seconds: float = 10.0
+    interval_seconds: float = 120.0
     watchlist_path: Path = Path("watchlist.yaml")
     state_dir: Path = Path("state")
     enabled_capabilities: list[str] = ["watchlist"]

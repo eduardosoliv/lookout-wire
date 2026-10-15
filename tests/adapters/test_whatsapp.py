@@ -144,19 +144,19 @@ def test_2xx_returns_sent_with_message_id_and_posts_text(build):
     }
 
 
-def test_after_2xx_the_next_send_waits_at_least_5_seconds(build, clock):
+def test_after_2xx_the_next_send_waits_at_least_10_seconds(build, clock):
     messenger = build(Script(sent()))
 
     messenger.send("hi")
 
-    assert not messenger.ready(clock.now + timedelta(seconds=4.9))
-    assert messenger.ready(clock.now + timedelta(seconds=5))
+    assert not messenger.ready(clock.now + timedelta(seconds=9.9))
+    assert messenger.ready(clock.now + timedelta(seconds=10))
 
 
 def test_covers_ae11_429_backoff_doubles_caps_at_60_and_resets_after_2xx(build, clock):
     script = Script(*[httpx.Response(429)] * 6, sent(), httpx.Response(429))
     messenger = build(script)
-    expected = [5, 10, 20, 40, 60, 60]
+    expected = [10, 20, 40, 60, 60, 60]
 
     for seconds in expected:
         outcome = messenger.send("hi")
@@ -167,9 +167,9 @@ def test_covers_ae11_429_backoff_doubles_caps_at_60_and_resets_after_2xx(build, 
         clock.advance(seconds)
 
     assert messenger.send("hi").status == SendStatus.SENT
-    clock.advance(5)
+    clock.advance(10)
     assert messenger.send("hi").status == SendStatus.RATE_LIMITED
-    assert messenger.ready(clock.now + timedelta(seconds=5))
+    assert messenger.ready(clock.now + timedelta(seconds=10))
 
 
 def test_503_with_131016_is_not_accepted_with_backoff(build, clock):
@@ -179,7 +179,7 @@ def test_503_with_131016_is_not_accepted_with_backoff(build, clock):
 
     assert outcome.status == SendStatus.NOT_ACCEPTED
     assert "503" in outcome.detail and "131016" in outcome.detail
-    assert not messenger.ready(clock.now + timedelta(seconds=4.9))
+    assert not messenger.ready(clock.now + timedelta(seconds=9.9))
 
 
 @pytest.mark.parametrize(
@@ -207,8 +207,8 @@ def test_connect_failures_are_not_accepted_with_backoff(build, clock, step):
     outcome = messenger.send("hi")
 
     assert outcome.status == SendStatus.NOT_ACCEPTED
-    assert not messenger.ready(clock.now + timedelta(seconds=4.9))
-    assert messenger.ready(clock.now + timedelta(seconds=5))
+    assert not messenger.ready(clock.now + timedelta(seconds=9.9))
+    assert messenger.ready(clock.now + timedelta(seconds=10))
 
 
 @pytest.mark.parametrize(

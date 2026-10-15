@@ -1,7 +1,7 @@
 # lookout-wire
 
 A personal WhatsApp agent for financial alerts. One process runs on your laptop, checks the
-watchlist every 10 seconds during US market hours, and messages you in WhatsApp when a stock
+watchlist every 2 minutes during US market hours, and messages you in WhatsApp when a stock
 trades below a price you chose. With a Gemini key it adds a short explanation of why the stock
 is down, with source links.
 
@@ -50,8 +50,8 @@ Quirks:
   message.
 - **Your id can change** if you change phone number. The agent notices the rejection and asks to
   pair again.
-- **WhatsApp allows about 12 messages a minute per agent.** The agent spaces sends about 5 seconds
-  apart.
+- **WhatsApp allows about 12 messages a minute per agent.** The agent spaces sends 10 seconds
+  apart, half that limit.
 - **Unverified:** whether WhatsApp delivers a message when you haven't written to the agent for
   over 24 hours. Live check 2 below tests this.
 - `just whatsapp-id` and `just whatsapp-send` check the setup. Pass message text as a plain second
@@ -76,8 +76,8 @@ Quirks:
   trade can be minutes old. The agent counts only trades inside today's regular session.
 - **The latest trade outside market hours is an after-hours price.** The running agent ignores
   it; `just scan` uses it.
-- **The free plan allows 200 requests a minute.** The agent uses about 12: one price request and
-  one clock request every 10 seconds.
+- **The free plan allows 200 requests a minute.** The agent uses about one: a price request and a
+  clock request every 2 minutes.
 
 ### Gemini: why a stock is down (optional)
 
@@ -150,7 +150,7 @@ tickers:
     buy: 350                # optional, must be below dip
 ```
 
-The agent re-reads the file every cycle, so edits apply within 10 seconds without a restart.
+The agent re-reads the file every cycle, so edits apply within 2 minutes without a restart.
 Changing a level resets it. A file that fails to parse is ignored until you fix it, and the agent
 keeps using the last good version. Run `just check-watchlist` after editing.
 
@@ -177,8 +177,9 @@ crossed:
 - Changing a level in `watchlist.yaml` resets it.
 - Prices count only during the regular US session (9:30 to 16:00 New York time), from trades
   inside it. Outside the session the agent checks nothing, so a quiet log then is normal.
-- If market data fails for six cycles in a row, you get one message saying alerts are paused, and
-  another when it recovers.
+- If market data fails for six cycles in a row (about 12 minutes), you get one message saying
+  alerts are paused, and another when it recovers.
+- The loop runs every 2 minutes by default. Set `LOOKOUT_INTERVAL_SECONDS` in `.env` to change it.
 
 ## Scan now
 
@@ -192,7 +193,7 @@ Above their levels, nothing sent (43): AAPL, ...
 
 It ignores alerts already sent and never changes the agent's saved alert state, so the agent's
 own alerts still fire normally. Outside market hours the latest trade can be an after-hours
-price. Sends are spaced about 5 seconds apart to respect WhatsApp's limit.
+price. Sends are spaced 10 seconds apart to respect WhatsApp's limit, so many tickers take a few minutes.
 
 ## Live checks
 
@@ -243,7 +244,7 @@ just run
 ```
 
 1. Send any message to your agent when the log asks; a greeting comes back.
-2. Within a minute you get one alert with the price, the level, and, with a Gemini key, a short
+2. Within about 3 minutes you get one alert with the price, the level, and, with a Gemini key, a short
    explanation and links.
 3. Later cycles send nothing more for that level today.
 

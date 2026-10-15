@@ -16,8 +16,8 @@ from lookout_wire.core.state import read_json, write_json
 
 logger = logging.getLogger(__name__)
 
-SPACING = timedelta(seconds=5)
-FIRST_BACKOFF = timedelta(seconds=5)
+SPACING = timedelta(seconds=10)
+FIRST_BACKOFF = timedelta(seconds=10)
 MAX_BACKOFF = timedelta(seconds=60)
 POLL_SECONDS = 25
 POLL_LIMIT = 50

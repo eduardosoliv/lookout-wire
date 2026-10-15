@@ -6,7 +6,7 @@ folder: this is a standalone Python project, not the Rails application those fil
 ## What this is
 
 lookout-wire is a personal WhatsApp agent for financial alerts. One always-on Python process on
-the owner's laptop polls Alpaca prices every 10 seconds during US market hours, compares them to a
+the owner's laptop polls Alpaca prices every 2 minutes (configurable) during US market hours, compares them to a
 hand-edited `watchlist.yaml`, and sends WhatsApp messages through the WhatsApp Agent Platform,
 optionally with a Gemini search-grounded explanation. The watchlist is the first capability; more
 will be added as separate packages.
