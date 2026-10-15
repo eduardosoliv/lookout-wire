@@ -10,11 +10,16 @@ MAX_LENGTH = 4096
 ICONS = {Kind.DIP: "⚠️", Kind.BUY: "🔥"}
 
 
+def heading(symbol: str, name: str | None) -> str:
+    """The alert's first line before the price: the ticker in WhatsApp bold, then the company."""
+    return title(f"*{symbol}*", name)
+
+
 def title(symbol: str, name: str | None) -> str:
-    """How a ticker is named in messages: the company with its ticker, or the ticker alone."""
+    """The ticker followed by the company name, without formatting."""
     if not name:
         return symbol
-    return f"{name} ({symbol})"
+    return f"{symbol} ({name})"
 
 
 def render(

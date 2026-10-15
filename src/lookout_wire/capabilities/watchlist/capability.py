@@ -6,7 +6,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 from lookout_wire.capabilities.watchlist.config import WatchlistFile
-from lookout_wire.capabilities.watchlist.message import build_question, render, title
+from lookout_wire.capabilities.watchlist.message import build_question, heading, render, title
 from lookout_wire.capabilities.watchlist.rules import (
     Alert,
     Decision,
@@ -150,7 +150,7 @@ class WatchlistCapability:
             return
         try:
             outcome = self._ports.messenger.send(
-                render(self._title(ticker.symbol), price, alerts, explanation)
+                render(self._heading(ticker.symbol), price, alerts, explanation)
             )
         except FatalError:
             self._set(unsent, replace(marker, phase=Phase.NOT_SENT))
@@ -189,6 +189,9 @@ class WatchlistCapability:
 
     def _title(self, symbol: str) -> str:
         return title(symbol, self._names.get(symbol))
+
+    def _heading(self, symbol: str) -> str:
+        return heading(symbol, self._names.get(symbol))
 
     def _marker(self, symbol: str) -> Marker | None:
         return self._state.markers.get(symbol)

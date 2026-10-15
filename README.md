@@ -59,10 +59,11 @@ keeps using the last good version. Run `just check-watchlist` after editing.
 
 ## Messages
 
-Each alert names the company and ticker, the price, and the deepest level crossed:
+Each alert names the ticker (bold in WhatsApp) and the company, the price, and the deepest level
+crossed:
 
 ```
-Broadcom Inc. (AVGO) $344.29
+*AVGO* (Broadcom Inc.) $344.29
 🔥 Buy 1.63% below $350.00
 ```
 

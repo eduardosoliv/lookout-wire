@@ -89,7 +89,7 @@ def test_covers_ae1_crossing_sends_one_message_and_persists_disarmed(world):
 
     world.capability().run(NOW)
 
-    assert world.messenger.sent == ["AAPL $149.80\n⚠️ Dip 0.13% below $150.00"]
+    assert world.messenger.sent == ["*AAPL* $149.80\n⚠️ Dip 0.13% below $150.00"]
     level = world.level()
     assert (level.armed, level.baseline, level.last_message_day) == (False, 149.8, TODAY)
     assert world.markers() == {}
@@ -121,7 +121,7 @@ def test_covers_ae9_failed_explanation_still_sends_the_alert(world):
 
     world.capability().run(NOW)
 
-    assert world.messenger.sent == ["AAPL $149.80\n⚠️ Dip 0.13% below $150.00"]
+    assert world.messenger.sent == ["*AAPL* $149.80\n⚠️ Dip 0.13% below $150.00"]
 
 
 def test_covers_ae10_closed_session_fetches_nothing_and_sends_nothing(world):
@@ -464,7 +464,7 @@ def test_one_ticker_without_a_trade_does_not_block_the_other(tmp_path):
     world.capability().run(NOW)
 
     assert len(world.messenger.sent) == 1
-    assert world.messenger.sent[0].startswith("AAPL")
+    assert world.messenger.sent[0].startswith("*AAPL*")
     assert world.level("MSFT").armed
 
 
@@ -474,4 +474,4 @@ def test_alert_header_uses_the_company_name_from_the_watchlist(tmp_path):
 
     world.capability().run(NOW)
 
-    assert world.messenger.sent[0].splitlines()[0] == "Apple Inc. (AAPL) $149.80"
+    assert world.messenger.sent[0].splitlines()[0] == "*AAPL* (Apple Inc.) $149.80"
