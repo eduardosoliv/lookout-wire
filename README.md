@@ -74,4 +74,40 @@ Result: not run yet.
 
 ### 3. Pairing, explanation, and a real alert
 
-See the end of this file once the app is complete.
+During US market hours, put a ticker in `watchlist.yaml` with a `dip` above its current price,
+then run:
+
+```bash
+uv run lookout-wire
+```
+
+1. Send any message to your agent when the log asks; a greeting comes back.
+2. Within a minute you get one alert with the price, the level, and, with a Gemini key, a short
+   explanation and links.
+3. Later cycles send nothing more for that level today.
+
+Record here whether the explanation links were Google redirect URLs or publisher URLs.
+
+Result: not run yet.
+
+## How it works
+
+- `src/lookout_wire/main.py` loads settings, pairs with WhatsApp, and runs the loop.
+- `src/lookout_wire/core/` holds the loop, settings, port interfaces, and the state-file helper.
+- `src/lookout_wire/adapters/` has one module per external system: Alpaca, WhatsApp, Gemini.
+- `src/lookout_wire/capabilities/watchlist/` is the first capability: config, level rules,
+  alert state, message text, and the capability that ties them together.
+
+To add a capability, create a package under `capabilities/`, give it a factory taking settings
+and ports, register it in `CAPABILITIES` in `main.py`, and enable it with
+`LOOKOUT_ENABLED_CAPABILITIES='["watchlist", "your_name"]'`. The loop calls its `run(now)` every
+tick; the capability decides for itself whether there is work to do.
+
+## Alert rules
+
+- A level alerts the first time the price trades below it.
+- After that it alerts again only when the price trades below the lowest price you were already
+  told about, at most once per level per trading day.
+- When the price recovers to the level, the level re-arms silently.
+- Changing a level in `watchlist.yaml` resets it.
+- Prices count only during the regular US session, from trades inside it.

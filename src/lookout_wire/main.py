@@ -3,16 +3,20 @@
 import logging
 import threading
 
+from lookout_wire.adapters.alpaca import AlpacaCalendar, AlpacaPriceSource
+from lookout_wire.adapters.gemini import build_explainer
+from lookout_wire.adapters.whatsapp import WhatsAppMessenger
+from lookout_wire.capabilities.watchlist.capability import build_watchlist
 from lookout_wire.core.capability import Capability, CapabilityFactory, FatalError
 from lookout_wire.core.log import configure_logging
-from lookout_wire.core.loop import Loop, install_signal_handlers
+from lookout_wire.core.loop import Loop, install_signal_handlers, utc_now
 from lookout_wire.core.ports import Ports
 from lookout_wire.core.registry import Registry, UnknownCapabilityError
 from lookout_wire.core.settings import Settings, SettingsError, load_settings
 
 log = logging.getLogger("lookout_wire")
 
-CAPABILITIES: dict[str, CapabilityFactory] = {}
+CAPABILITIES: dict[str, CapabilityFactory] = {"watchlist": build_watchlist}
 
 
 def main() -> None:
@@ -53,4 +57,33 @@ def build_capabilities(settings: Settings, stop: threading.Event) -> list[Capabi
 
 
 def build_ports(settings: Settings, stop: threading.Event) -> Ports:
-    raise FatalError("No adapters are wired yet")
+    """Builds every adapter and pairs with WhatsApp before any price is evaluated."""
+    messenger = WhatsAppMessenger(
+        token=settings.whatsapp_token.get_secret_value(),
+        base_url=settings.whatsapp_base_url,
+        state_path=settings.state_dir / "whatsapp.json",
+        stop=stop,
+        connect_timeout=settings.send_connect_timeout_seconds,
+        read_timeout=settings.send_read_timeout_seconds,
+        poll_read_timeout=settings.poll_read_timeout_seconds,
+    )
+    messenger.ensure_paired()
+    key_id = settings.alpaca_key_id.get_secret_value()
+    secret = settings.alpaca_secret_key.get_secret_value()
+    timeout = settings.price_timeout_seconds
+    return Ports(
+        prices=AlpacaPriceSource(key_id, secret, settings.alpaca_data_url, timeout),
+        calendar=AlpacaCalendar(key_id, secret, settings.alpaca_trading_url, timeout),
+        messenger=messenger,
+        explainer=build_explainer(
+            _gemini_key(settings), settings.gemini_model, settings.explain_timeout_seconds
+        ),
+        state_dir=settings.state_dir,
+        clock=utc_now,
+    )
+
+
+def _gemini_key(settings: Settings) -> str | None:
+    if settings.gemini_api_key is None:
+        return None
+    return settings.gemini_api_key.get_secret_value()
