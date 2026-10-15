@@ -7,45 +7,49 @@ is down, with source links.
 
 ## Setup
 
+Needs [uv](https://docs.astral.sh/uv/) and [just](https://github.com/casey/just) (`brew install just`).
+
 ```bash
-uv sync
+just install
 cp .env.example .env                       # fill in your keys
 cp watchlist.example.yaml watchlist.yaml   # edit your tickers
-uv run lookout-wire
+just run
 ```
 
 On first start the app asks you to send any message to your agent in WhatsApp. It learns your
-id from that message, replies with a greeting, and starts watching prices.
+id from that message, replies with a greeting, and starts watching prices. Stop it with Ctrl-C.
 
-## Development
+## Commands
 
-```bash
-uv run pytest
-uv run ruff check .
-uv run ruff format .
-```
+Run `just` to list every recipe.
 
-Tests never touch the network.
+| Command | What it does |
+|---|---|
+| `just install` | Install dependencies into `.venv` |
+| `just run` | Start the agent |
+| `just check` | Lint, format check, and tests: run before every commit |
+| `just test` | Run the tests; extra arguments go to pytest, e.g. `just test -k rules` |
+| `just fix` | Fix what ruff can fix, then format |
+| `just lint` / `just format` | Lint only / format only |
+| `just check-alpaca` | Live check 1, below |
+| `just whatsapp-id` / `just whatsapp-send ID` | Live check 2, below |
+
+Tests never touch the network. The live-check recipes read your keys from `.env`; nothing else
+in the justfile does.
 
 ## Live checks
 
-These need your real keys and cannot run in tests. Load the keys into your shell first:
-
-```bash
-set -a; source .env; set +a
-```
+These need your real keys and cannot run in tests.
 
 ### 1. Alpaca keys serve prices and the market clock
 
 ```bash
-curl -s -H "APCA-API-KEY-ID: $LOOKOUT_ALPACA_KEY_ID" -H "APCA-API-SECRET-KEY: $LOOKOUT_ALPACA_SECRET_KEY" \
-  "https://data.alpaca.markets/v2/stocks/snapshots?symbols=AAPL&feed=iex" | head -c 300; echo
-curl -s -H "APCA-API-KEY-ID: $LOOKOUT_ALPACA_KEY_ID" -H "APCA-API-SECRET-KEY: $LOOKOUT_ALPACA_SECRET_KEY" \
-  "${LOOKOUT_ALPACA_TRADING_URL:-https://paper-api.alpaca.markets}/v2/clock"; echo
+just check-alpaca
 ```
 
-Both must return JSON, the first with a `latestTrade` for AAPL. If the clock call fails with
-live keys, set `LOOKOUT_ALPACA_TRADING_URL=https://api.alpaca.markets`.
+It prints the AAPL snapshot from the data host and the market clock from the trading host. Both
+must be JSON, the first with a `latestTrade`. If the clock call fails with live keys, set
+`LOOKOUT_ALPACA_TRADING_URL=https://api.alpaca.markets` in `.env`.
 
 Result: not run yet.
 
@@ -54,17 +58,14 @@ Result: not run yet.
 Send any message to your agent in WhatsApp, then read your id:
 
 ```bash
-curl -s -H "Authorization: Bearer $LOOKOUT_WHATSAPP_TOKEN" \
-  "https://api.whatsapp.com/agent/v1/updates?offset=0&limit=50&timeout=5"
+just whatsapp-id
 ```
 
 Copy the `from` value (it looks like `user:123...`). At least 24 hours later, without messaging
 the agent again, send:
 
 ```bash
-curl -s -X POST "https://api.whatsapp.com/agent/v1/messages" \
-  -H "Authorization: Bearer $LOOKOUT_WHATSAPP_TOKEN" -H "Content-Type: application/json" \
-  -d '{"messaging_product":"whatsapp","to":"user:PASTE_ID","type":"text","text":{"body":"lookout-wire proactive check"}}'
+just whatsapp-send user:PASTE_ID
 ```
 
 The message must arrive. If it is rejected, push alerts cannot work and the design needs a
@@ -78,7 +79,7 @@ During US market hours, put a ticker in `watchlist.yaml` with a `dip` above its 
 then run:
 
 ```bash
-uv run lookout-wire
+just run
 ```
 
 1. Send any message to your agent when the log asks; a greeting comes back.
