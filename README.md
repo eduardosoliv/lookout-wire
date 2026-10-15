@@ -5,6 +5,8 @@ watchlist every 2 minutes during US market hours, and messages you in WhatsApp w
 trades below a price you chose. With a Gemini key it adds a short explanation of why the stock
 is down, naming its sources.
 
+<img src="docs/images/whatsapp-alerts.png" alt="Two Lookout Wire alerts in WhatsApp: AVGO 1.63% below its Buy level and AXP 1.93% below its Dip level, each with a short explanation and its sources" width="600">
+
 ## Setup
 
 Needs [uv](https://docs.astral.sh/uv/) and [just](https://github.com/casey/just) (`brew install just`).
@@ -118,6 +120,7 @@ Quirks:
   why.
 - **Sources are names, not links.** Gemini's links are long Google redirect URLs, and WhatsApp
   cannot attach a link to a name, so alerts end with a line like `Sources: reuters.com, cnbc.com`.
+  WhatsApp makes each name tappable on its own; it opens the site's home page, not the article.
 
 ## Commands
 
