@@ -6,7 +6,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 from lookout_wire.capabilities.watchlist.config import WatchlistFile
-from lookout_wire.capabilities.watchlist.message import build_question, render
+from lookout_wire.capabilities.watchlist.message import build_question, render, title
 from lookout_wire.capabilities.watchlist.rules import (
     Alert,
     Decision,
@@ -55,6 +55,7 @@ class WatchlistCapability:
         self._state = resolve_markers(self._saved)
         self._failures = 0
         self._skipped: set[str] = set()
+        self._names: dict[str, str | None] = {}
         self._notice: str | None = None
         self._failure_notice_delivered = False
         self._save()
@@ -88,6 +89,7 @@ class WatchlistCapability:
         if not parsed.parsed:
             return
         self._skipped = parsed.invalid_symbols
+        self._names = {entry.symbol: entry.name for entry in parsed.entries}
         tickers = reconcile(self._state.tickers, parsed.entries, parsed.invalid_symbols)
         markers = {s: m for s, m in self._state.markers.items() if s in tickers}
         self._state = WatchlistState(tickers, markers)
@@ -147,7 +149,9 @@ class WatchlistCapability:
         if not self._write_marker(unsent, marker):
             return
         try:
-            outcome = self._ports.messenger.send(render(ticker.symbol, price, alerts, explanation))
+            outcome = self._ports.messenger.send(
+                render(self._title(ticker.symbol), price, alerts, explanation)
+            )
         except FatalError:
             self._set(unsent, replace(marker, phase=Phase.NOT_SENT))
             self._save()
@@ -166,7 +170,9 @@ class WatchlistCapability:
         kept = self._marker(symbol)
         if kept is not None and kept.trading_day == day and kept.explanation_text:
             return Explanation(kept.explanation_text, kept.explanation_links)
-        return self._ports.explainer.explain(build_question(symbol, price, alerts, day))
+        return self._ports.explainer.explain(
+            build_question(self._title(symbol), price, alerts, day)
+        )
 
     def _write_marker(self, ticker: TickerState, marker: Marker) -> bool:
         previous = self._state
@@ -180,6 +186,9 @@ class WatchlistCapability:
             self._state = previous
             return False
         return True
+
+    def _title(self, symbol: str) -> str:
+        return title(symbol, self._names.get(symbol))
 
     def _marker(self, symbol: str) -> Marker | None:
         return self._state.markers.get(symbol)

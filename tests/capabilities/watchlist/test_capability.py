@@ -466,3 +466,12 @@ def test_one_ticker_without_a_trade_does_not_block_the_other(tmp_path):
     assert len(world.messenger.sent) == 1
     assert world.messenger.sent[0].startswith("AAPL")
     assert world.level("MSFT").armed
+
+
+def test_alert_header_uses_the_company_name_from_the_watchlist(tmp_path):
+    world = World(tmp_path, "tickers:\n  - symbol: AAPL\n    name: Apple Inc.\n    dip: 150\n")
+    world.prices.trades = {"AAPL": trade(149.8)}
+
+    world.capability().run(NOW)
+
+    assert world.messenger.sent[0].splitlines()[0] == "Apple Inc. (AAPL) $149.80"

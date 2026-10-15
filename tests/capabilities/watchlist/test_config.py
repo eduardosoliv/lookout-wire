@@ -76,3 +76,12 @@ def test_padded_symbol_is_stripped(tmp_path):
     result = WatchlistFile(write(tmp_path, "tickers:\n  - symbol: ' aapl '\n    dip: 150\n")).read()
 
     assert result.entries == [Entry("AAPL", dip=150)]
+
+
+def test_optional_company_name_is_parsed(tmp_path):
+    path = tmp_path / "watchlist.yaml"
+    path.write_text("tickers:\n  - symbol: AVGO\n    name: Broadcom Inc.\n    dip: 370\n")
+
+    result = WatchlistFile(path).read()
+
+    assert result.entries == [Entry("AVGO", dip=370, name="Broadcom Inc.")]

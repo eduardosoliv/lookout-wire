@@ -12,6 +12,7 @@ class Entry:
     symbol: str
     dip: float
     buy: float | None = None
+    name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -26,6 +27,7 @@ class _Ticker(BaseModel):
     symbol: str
     dip: float
     buy: float | None = None
+    name: str | None = None
 
 
 class _Document(BaseModel):
@@ -59,7 +61,7 @@ class WatchlistFile:
 def _validate(document: _Document) -> ParseResult:
     entries, errors, invalid = [], [], set()
     for ticker in document.tickers:
-        entry = Entry(symbol=ticker.symbol.strip().upper(), dip=ticker.dip, buy=ticker.buy)
+        entry = Entry(ticker.symbol.strip().upper(), ticker.dip, ticker.buy, _clean(ticker.name))
         if entry.buy is not None and entry.buy >= entry.dip:
             errors.append(f"{entry.symbol}: buy {entry.buy} must be below dip {entry.dip}")
             invalid.add(entry.symbol)
@@ -82,3 +84,9 @@ def _describe_field(item) -> str:
             where += f", {location[2]}"
         return f"{where}: {item['msg']}"
     return f"{'.'.join(str(part) for part in location) or 'file'}: {item['msg']}"
+
+
+def _clean(name: str | None) -> str | None:
+    if name is None:
+        return None
+    return name.strip() or None

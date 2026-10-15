@@ -1,6 +1,6 @@
 from datetime import date
 
-from lookout_wire.capabilities.watchlist.message import MAX_LENGTH, build_question, render
+from lookout_wire.capabilities.watchlist.message import MAX_LENGTH, build_question, render, title
 from lookout_wire.capabilities.watchlist.rules import Alert, AlertKind, Kind
 from lookout_wire.core.ports import Explanation
 
@@ -62,3 +62,19 @@ def test_question_uses_the_shown_level_when_both_fire():
 
     assert "$130.00" in question
     assert "$150.00" not in question
+
+
+def test_header_shows_company_name_with_ticker_when_known():
+    text = render(title("AVGO", "Broadcom Inc."), 344.29, [BUY], None)
+
+    assert text.splitlines()[0] == "Broadcom Inc. (AVGO) $344.29"
+
+
+def test_header_shows_only_the_ticker_without_a_name():
+    assert title("AVGO", None) == "AVGO"
+
+
+def test_question_names_the_company():
+    question = build_question(title("AVGO", "Broadcom Inc."), 344.29, [BUY], date(2026, 10, 15))
+
+    assert "Broadcom Inc. (AVGO)" in question

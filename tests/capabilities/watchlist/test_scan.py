@@ -17,6 +17,7 @@ YAML = """tickers:
     dip: 235
     buy: 200
   - symbol: MSFT
+    name: Microsoft Corporation
     dip: 440
 """
 
@@ -60,7 +61,7 @@ def test_sends_one_message_per_ticker_below_a_level_ignoring_the_market(world):
 
     assert [text.splitlines()[0] for text in world.messenger.sent] == [
         "NVDA $178.50",
-        "MSFT $430.00",
+        "Microsoft Corporation (MSFT) $430.00",
     ]
     assert world.messenger.sent[0].splitlines()[1] == "🔥 Buy 0.83% below $180.00"
     assert report.sent == ["NVDA", "MSFT"]

@@ -10,10 +10,17 @@ MAX_LENGTH = 4096
 ICONS = {Kind.DIP: "⚠️", Kind.BUY: "🔥"}
 
 
+def title(symbol: str, name: str | None) -> str:
+    """How a ticker is named in messages: the company with its ticker, or the ticker alone."""
+    if not name:
+        return symbol
+    return f"{name} ({symbol})"
+
+
 def render(
-    symbol: str, price: float, alerts: Sequence[Alert], explanation: Explanation | None
+    heading: str, price: float, alerts: Sequence[Alert], explanation: Explanation | None
 ) -> str:
-    header = f"{symbol} {_dollars(price)}\n{_level_line(headline(alerts), price)}"
+    header = f"{heading} {_dollars(price)}\n{_level_line(headline(alerts), price)}"
     if explanation is None:
         return header
     links = "\n".join(explanation.links)
@@ -28,10 +35,10 @@ def headline(alerts: Sequence[Alert]) -> Alert:
     return buys[0] if buys else alerts[0]
 
 
-def build_question(symbol: str, price: float, alerts: Sequence[Alert], day: date) -> str:
+def build_question(heading: str, price: float, alerts: Sequence[Alert], day: date) -> str:
     alert = headline(alerts)
     return (
-        f"Why is {symbol} stock down today, {day.isoformat()}? It trades at {_dollars(price)}, "
+        f"Why is {heading} stock down today, {day.isoformat()}? It trades at {_dollars(price)}, "
         f"{_percent_below(alert.level, price)} below {_dollars(alert.level)}. Answer in three or "
         "four plain sentences for a WhatsApp message, based on today's news."
     )

@@ -1,9 +1,12 @@
 # Copy to watchlist.yaml and edit. The file is re-read every cycle.
 # dip: you get a message the first time the price trades below it.
 # buy: optional, must be below dip.
+# name: optional, shown in messages with the ticker.
 tickers:
   - symbol: AAPL
+    name: Apple Inc.
     dip: 150
     buy: 130
   - symbol: MSFT
+    name: Microsoft Corporation
     dip: 380

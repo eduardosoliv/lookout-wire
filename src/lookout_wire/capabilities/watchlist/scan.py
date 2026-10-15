@@ -6,7 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from lookout_wire.capabilities.watchlist.config import Entry, WatchlistFile
-from lookout_wire.capabilities.watchlist.message import build_question, render
+from lookout_wire.capabilities.watchlist.message import build_question, render, title
 from lookout_wire.capabilities.watchlist.rules import Alert, AlertKind, Kind
 from lookout_wire.core.ports import Ports, SendOutcome, SendStatus, Trade
 
@@ -50,8 +50,9 @@ def _scan_entry(
         report.above.append(entry.symbol)
         return
     day = trade.timestamp.date()
-    explanation = ports.explainer.explain(build_question(entry.symbol, trade.price, alerts, day))
-    outcome = _send(ports, render(entry.symbol, trade.price, alerts, explanation), sleep)
+    heading = title(entry.symbol, entry.name)
+    explanation = ports.explainer.explain(build_question(heading, trade.price, alerts, day))
+    outcome = _send(ports, render(heading, trade.price, alerts, explanation), sleep)
     target = report.sent if outcome.status in DELIVERED else report.failed
     target.append(entry.symbol)
 
