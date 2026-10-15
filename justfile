@@ -1,7 +1,5 @@
 # lookout-wire tasks. Run `just` to list them.
 
-trading_url := "https://paper-api.alpaca.markets"
-
 # List the available recipes
 default:
     @just --list
@@ -38,14 +36,7 @@ check: lint
 
 # Live check 1: your Alpaca keys serve prices and the market clock
 check-alpaca:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    set -a; source .env; set +a
-    auth=(-H "APCA-API-KEY-ID: $LOOKOUT_ALPACA_KEY_ID" -H "APCA-API-SECRET-KEY: $LOOKOUT_ALPACA_SECRET_KEY")
-    echo "Snapshot (data host):"
-    curl -sf "${auth[@]}" "https://data.alpaca.markets/v2/stocks/snapshots?symbols=AAPL&feed=iex" | head -c 300; echo
-    echo "Clock (trading host):"
-    curl -sf "${auth[@]}" "${LOOKOUT_ALPACA_TRADING_URL:-{{ trading_url }}}/v2/clock"; echo
+    uv run python -m lookout_wire.checks
 
 # Live check 2, step 1: after messaging your agent, show recent messages and your id
 whatsapp-id:

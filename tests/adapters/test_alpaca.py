@@ -226,3 +226,8 @@ def test_clock_with_unexpected_shape_raises_calendar_error():
 
     with pytest.raises(CalendarError):
         cal.session(datetime(2026, 10, 15, 14, 0, tzinfo=UTC))
+
+
+def test_rejected_request_names_the_http_status():
+    with pytest.raises(PriceError, match="HTTP 403"):
+        price_source(lambda request: httpx.Response(403)).latest_trades(["AAPL"])

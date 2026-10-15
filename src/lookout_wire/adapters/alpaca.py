@@ -25,6 +25,13 @@ def parse_timestamp(text: str) -> datetime:
     return datetime.fromisoformat(EXTRA_FRACTION_DIGITS.sub(r"\1", text))
 
 
+def describe(error: Exception) -> str:
+    """The HTTP status when the server answered, else the error type. Never the URL or headers."""
+    if isinstance(error, httpx.HTTPStatusError):
+        return f"HTTP {error.response.status_code}"
+    return type(error).__name__
+
+
 def build_client(
     key_id: str, secret_key: str, base_url: str, timeout_seconds: float, transport
 ) -> httpx.Client:
@@ -70,7 +77,7 @@ class AlpacaPriceSource:
             response.raise_for_status()
             return response.json()
         except (httpx.HTTPError, ValueError) as error:
-            raise PriceError(f"snapshot request failed: {type(error).__name__}") from error
+            raise PriceError(f"snapshot request failed: {describe(error)}") from error
 
     @staticmethod
     def _trade_from(snapshot: dict | None) -> Trade | None:
@@ -120,7 +127,7 @@ class AlpacaCalendar:
             response.raise_for_status()
             return response.json()
         except (httpx.HTTPError, ValueError) as error:
-            raise CalendarError(f"{path} request failed: {type(error).__name__}") from error
+            raise CalendarError(f"{path} request failed: {describe(error)}") from error
 
 
 def at_new_york(day: date, hours_minutes: str) -> datetime:

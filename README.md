@@ -47,8 +47,9 @@ These need your real keys and cannot run in tests.
 just check-alpaca
 ```
 
-It prints the AAPL snapshot from the data host and the market clock from the trading host. Both
-must be JSON, the first with a `latestTrade`. If the clock call fails with live keys, set
+It reports OK or NOT OK for prices (AAPL's last trade from the data host) and for the market
+clock (from the trading host), with details under each, and exits non-zero if either fails. If
+only the clock fails and you use live keys, set
 `LOOKOUT_ALPACA_TRADING_URL=https://api.alpaca.markets` in `.env`.
 
 Result: not run yet.
