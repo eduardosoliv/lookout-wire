@@ -5,7 +5,7 @@ from collections.abc import Callable
 from typing import Any
 
 from google import genai
-from google.genai import types
+from google.genai import errors, types
 
 from lookout_wire.core.ports import Explainer, Explanation
 
@@ -31,7 +31,9 @@ class GeminiExplainer:
         try:
             response = self._generate(question)
         except Exception as error:
-            logger.warning("Gemini explanation failed: %s", type(error).__name__)
+            logger.warning(
+                "Gemini explanation failed with model %s: %s", self._model, describe(error)
+            )
             return None
         text = (response.text or "").strip()
         if not text:
@@ -75,3 +77,11 @@ def _chunk_uris(response: Any) -> list[str]:
         return []
     chunks = metadata.grounding_chunks or []
     return [chunk.web.uri for chunk in chunks if chunk.web is not None and chunk.web.uri]
+
+
+def describe(error: Exception) -> str:
+    """Google's status and first sentence for an API error, else the error type. Never the key."""
+    if not isinstance(error, errors.APIError):
+        return type(error).__name__
+    first_sentence = (error.message or "").split(". ")[0].rstrip(".")
+    return f"HTTP {error.code} {error.status}: {first_sentence}."

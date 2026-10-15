@@ -26,3 +26,15 @@ def test_http_requests_do_not_log_their_url():
         logging.getLogger().removeHandler(handler)
 
     assert not [m for m in handler.messages if "example.test" in m]
+
+
+def test_google_sdk_info_lines_are_silenced():
+    configure_logging()
+    handler = ListHandler()
+    logging.getLogger().addHandler(handler)
+    try:
+        logging.getLogger("google_genai.models").info("AFC is enabled with max remote calls: 10.")
+    finally:
+        logging.getLogger().removeHandler(handler)
+
+    assert handler.messages == []

@@ -132,3 +132,30 @@ def test_build_explainer_with_key_returns_gemini(monkeypatch):
     monkeypatch.setattr("lookout_wire.adapters.gemini.genai.Client", lambda **_: SimpleNamespace())
 
     assert isinstance(build_explainer("secret-key", MODEL, 15), GeminiExplainer)
+
+
+def test_api_error_logs_model_status_and_google_message(caplog):
+    from google.genai import errors
+
+    quota = errors.ClientError(
+        429,
+        {
+            "error": {
+                "code": 429,
+                "status": "RESOURCE_EXHAUSTED",
+                "message": "You exceeded your current quota, please check your plan and billing "
+                "details. For more information on this error, head to: https://ai.google.dev/x.",
+            }
+        },
+    )
+    explainer, _ = explainer_returning(quota)
+
+    with caplog.at_level(logging.WARNING):
+        assert explainer.explain("why?") is None
+
+    assert (
+        f"Gemini explanation failed with model {MODEL}: HTTP 429 RESOURCE_EXHAUSTED: "
+        "You exceeded your current quota, please check your plan and billing details."
+    ) in caplog.text
+    assert "For more information" not in caplog.text
+    assert "secret-key" not in caplog.text

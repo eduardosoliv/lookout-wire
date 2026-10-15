@@ -3,7 +3,7 @@
 import logging
 import sys
 
-QUIET_LOGGERS = ("httpx", "httpcore")
+QUIET_LOGGERS = ("httpx", "httpcore", "google_genai")
 
 
 def configure_logging(level: int = logging.INFO) -> None:
