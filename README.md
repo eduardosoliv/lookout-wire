@@ -125,7 +125,7 @@ Run `just` to list every recipe.
 
 | Command | What it does |
 |---|---|
-| `just install` | Install dependencies into `.venv` |
+| `just install` | Install dependencies into `.venv` and switch on the pre-commit hook |
 | `just run` | Start the agent |
 | `just scan` | Message every ticker below its Dip or Buy level right now, market open or not, then exit |
 | `just check-watchlist` | Check `watchlist.yaml` is well formed: valid numbers, Buy below Dip, no symbol twice. Needs no keys |
@@ -138,6 +138,10 @@ Run `just` to list every recipe.
 
 Tests never touch the network. The live-check recipes read your keys from `.env`; nothing else
 in the justfile does.
+
+A pre-commit hook in `.githooks/` runs `just check` before every commit and stops the commit if
+anything fails. `just install` switches it on. To skip it once in an emergency, use
+`git commit --no-verify`.
 
 ## Watchlist
 

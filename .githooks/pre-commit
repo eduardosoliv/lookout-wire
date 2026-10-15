@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Runs lint, the format check, and all tests before every commit.
+# Skip once in an emergency with: git commit --no-verify
+set -euo pipefail
+
+echo "pre-commit: running just check"
+if ! just check; then
+  echo "pre-commit: checks failed, commit aborted. Run 'just fix' for lint and format problems."
+  exit 1
+fi

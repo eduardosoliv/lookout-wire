@@ -26,7 +26,7 @@ Python 3.14, managed with uv. Tasks run through `just`:
 
 | Command | Use |
 |---|---|
-| `just check` | Lint, format check, and all tests. Must pass before every commit |
+| `just check` | Lint, format check, and all tests. Must pass before every commit; the pre-commit hook in `.githooks/` enforces it |
 | `just test -k <pattern>` | Run a subset of tests |
 | `just fix` | Auto-fix lint, then format |
 | `just check-watchlist` | Validate `watchlist.yaml` |
@@ -107,4 +107,5 @@ the plan. In short:
 
 - Commit messages use conventional commits (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`).
 - Stage files by path; never `git add .`.
+- Never bypass the pre-commit hook with `--no-verify`; fix what it reports.
 - Never push or create a remote without the owner asking.

@@ -4,9 +4,10 @@
 default:
     @just --list
 
-# Install dependencies into .venv
+# Install dependencies into .venv and switch on the git hooks
 install:
     uv sync
+    git config core.hooksPath .githooks
 
 # Start the agent (pairs with WhatsApp on first run)
 run:
