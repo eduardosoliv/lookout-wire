@@ -58,8 +58,11 @@ def test_sends_one_message_per_ticker_below_a_level_ignoring_the_market(world):
 
     report = world.run()
 
-    assert [text.splitlines()[0] for text in world.messenger.sent] == ["NVDA 178.50", "MSFT 430.00"]
-    assert "⚠️ Dip 200.00" in world.messenger.sent[0] and "🔥 Buy 180.00" in world.messenger.sent[0]
+    assert [text.splitlines()[0] for text in world.messenger.sent] == [
+        "NVDA $178.50",
+        "MSFT $430.00",
+    ]
+    assert world.messenger.sent[0].splitlines()[1] == "🔥 Buy 0.83% below $180.00"
     assert report.sent == ["NVDA", "MSFT"]
     assert report.above == ["AAPL"]
 

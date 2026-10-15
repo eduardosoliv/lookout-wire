@@ -7,14 +7,13 @@ from lookout_wire.capabilities.watchlist.rules import Alert, AlertKind, Kind
 from lookout_wire.core.ports import Explanation
 
 MAX_LENGTH = 4096
-LABELS = {AlertKind.CROSSED: "crossed", AlertKind.NEW_LOW: "new low"}
 ICONS = {Kind.DIP: "⚠️", Kind.BUY: "🔥"}
 
 
 def render(
     symbol: str, price: float, alerts: Sequence[Alert], explanation: Explanation | None
 ) -> str:
-    header = "\n".join([f"{symbol} {price:.2f}", *(_level_line(a, price) for a in alerts)])
+    header = f"{symbol} {_dollars(price)}\n{_level_line(headline(alerts), price)}"
     if explanation is None:
         return header
     links = "\n".join(explanation.links)
@@ -23,19 +22,31 @@ def render(
     return "\n\n".join(part for part in parts if part)
 
 
+def headline(alerts: Sequence[Alert]) -> Alert:
+    """The deepest level that fired: Buy when it fired, since it implies the Dip."""
+    buys = [alert for alert in alerts if alert.kind == Kind.BUY]
+    return buys[0] if buys else alerts[0]
+
+
 def build_question(symbol: str, price: float, alerts: Sequence[Alert], day: date) -> str:
-    alert = alerts[0]
+    alert = headline(alerts)
     return (
-        f"Why is {symbol} stock down today, {day.isoformat()}? It trades at {price:.2f}, "
-        f"{_percent_below(alert.level, price)} below {alert.level:.2f}. Answer in three or four "
-        "plain sentences for a WhatsApp message, based on today's news."
+        f"Why is {symbol} stock down today, {day.isoformat()}? It trades at {_dollars(price)}, "
+        f"{_percent_below(alert.level, price)} below {_dollars(alert.level)}. Answer in three or "
+        "four plain sentences for a WhatsApp message, based on today's news."
     )
 
 
 def _level_line(alert: Alert, price: float) -> str:
     name = f"{ICONS[alert.kind]} {alert.kind.value.capitalize()}"
-    label = LABELS[alert.alert]
-    return f"{name} {alert.level:.2f} {label}, {_percent_below(alert.level, price)} below"
+    line = f"{name} {_percent_below(alert.level, price)} below {_dollars(alert.level)}"
+    if alert.alert == AlertKind.NEW_LOW:
+        return f"{line}, new low"
+    return line
+
+
+def _dollars(amount: float) -> str:
+    return f"${amount:,.2f}"
 
 
 def _percent_below(level: float, price: float) -> str:
