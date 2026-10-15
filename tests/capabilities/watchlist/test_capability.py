@@ -280,7 +280,7 @@ def test_other_client_error_records_the_level_as_sent(world):
     assert not world.level().armed
 
 
-def test_unknown_outcome_records_the_level_as_sent(world):
+def test_covers_ae14_unknown_outcome_records_the_level_as_sent(world):
     world.prices.trades = {"AAPL": trade(149.8)}
     world.messenger.outcomes.append(SendOutcome(SendStatus.UNKNOWN))
 
