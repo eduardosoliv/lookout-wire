@@ -6,15 +6,19 @@ folder: this is a standalone Python project, not the Rails application those fil
 ## What this is
 
 lookout-wire is a personal WhatsApp agent for financial alerts. One always-on Python process on
-the owner's laptop polls Alpaca prices every 2 minutes (configurable) during US market hours, compares them to a
-hand-edited `watchlist.yaml`, and sends WhatsApp messages through the WhatsApp Agent Platform,
-optionally with a Gemini search-grounded explanation. The watchlist is the first capability; more
-will be added as separate packages.
+the owner's laptop polls Alpaca prices every 2 minutes (configurable) during US market hours,
+compares them to a hand-edited `watchlist.yaml`, and sends WhatsApp messages through the WhatsApp
+Agent Platform, optionally with a Gemini search-grounded explanation. The watchlist is the first
+capability; more will be added as separate packages.
 
 The plan that defines the product rules and design decisions is
 `docs/plans/2026-10-15-1635-feat-whatsapp-watchlist-alerts-plan.md`. Read its Product Contract
-before changing alert behavior. Decisions marked `session-settled` there were made by the owner;
-do not change them without asking.
+before changing alert behavior. Decisions marked `session-settled` there were made by the owner,
+and so were the changes listed in its "Product Contract preservation" note. Do not change them
+without asking.
+
+The README's "External services" section records how WhatsApp, Alpaca, and Gemini behave in
+practice, including quirks that tests cannot show. Read it before changing an adapter.
 
 ## Stack and commands
 
@@ -68,6 +72,17 @@ The owner wants code that is simple to read and maintain:
 - Assert on what the code returns, stores, or sends, not on calls between internal parts.
 - Acceptance examples in the plan (AE1 to AE20) each have a test; keep the `Covers AE<N>` names.
 
+## Messages and timing
+
+The owner chose the alert wording and pacing; change them only when asked.
+
+- Format (KTD11 in the plan): `*AVGO* (Broadcom Inc.) $344.29`, then one line for the deepest
+  level that fired, such as `🔥 Buy 1.63% below $350.00`, then the explanation, then
+  `Sources: reuters.com, cnbc.com`. `*...*` is WhatsApp bold.
+- WhatsApp text cannot attach a link to a word, so sources are names, never URLs.
+- A message must stay under 4096 characters; the explanation is cut first.
+- The loop runs every 120 seconds by default, and sends are spaced 10 seconds apart.
+
 ## Alert-state safety
 
 The product must never send the same alert twice and never lose a pending alert silently. Before
@@ -83,6 +98,8 @@ the plan. In short:
 
 - Keys live in `.env`, which is gitignored. Never read, print, or commit `.env`, and never log
   settings objects, request headers, or URLs with query strings.
+- The owner's permission settings block agents from reading any `.env*` file, including
+  `.env.example`. Ask the owner to make changes to `.env.example`.
 - `watchlist.yaml` and `state/` are the owner's private data and are gitignored. Do not commit
   them.
 

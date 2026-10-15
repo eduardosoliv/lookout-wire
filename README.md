@@ -134,7 +134,7 @@ Run `just` to list every recipe.
 | `just fix` | Fix what ruff can fix, then format |
 | `just lint` / `just format` | Lint only / format only |
 | `just check-alpaca` | Live check 1, below |
-| `just whatsapp-id` / `just whatsapp-send ID` | Live check 2, below |
+| `just whatsapp-id` / `just whatsapp-send ID [TEXT]` | Live check 2, below |
 
 Tests never touch the network. The live-check recipes read your keys from `.env`; nothing else
 in the justfile does.
@@ -193,9 +193,13 @@ Sent (2): NVDA, MSFT
 Above their levels, nothing sent (43): AAPL, ...
 ```
 
+The summary also lists any ticker Alpaca returned no price for, and any message that could not be
+sent; in that case the command exits non-zero.
+
 It ignores alerts already sent and never changes the agent's saved alert state, so the agent's
 own alerts still fire normally. Outside market hours the latest trade can be an after-hours
-price. Sends are spaced 10 seconds apart to respect WhatsApp's limit, so many tickers take a few minutes.
+price. Sends are spaced 10 seconds apart to respect WhatsApp's limit, so many tickers take a few
+minutes.
 
 ## Live checks
 
@@ -246,8 +250,8 @@ just run
 ```
 
 1. Send any message to your agent when the log asks; a greeting comes back.
-2. Within about 3 minutes you get one alert with the price, the level, and, with a Gemini key, a short
-   explanation and its sources.
+2. Within about 3 minutes you get one alert with the price, the level, and, with a Gemini key,
+   a short explanation and its sources.
 3. Later cycles send nothing more for that level today.
 
 Result: pairing OK on 2026-10-15, greeting received. Explanations OK the same day through
