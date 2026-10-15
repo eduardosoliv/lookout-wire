@@ -1,4 +1,4 @@
-# lookout-wire
+# Lookout Wire
 
 A personal WhatsApp agent for financial alerts. One process runs on your laptop, checks the
 watchlist every 2 minutes during US market hours, and messages you in WhatsApp when a stock
