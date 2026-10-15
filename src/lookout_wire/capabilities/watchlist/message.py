@@ -28,9 +28,9 @@ def render(
     header = f"{heading} {_dollars(price)}\n{_level_line(headline(alerts), price)}"
     if explanation is None:
         return header
-    links = "\n".join(explanation.links)
-    room = MAX_LENGTH - len(header) - len(links) - 4
-    parts = [header, explanation.text[: max(room, 0)].rstrip(), links]
+    sources = f"Sources: {', '.join(explanation.sources)}" if explanation.sources else ""
+    room = MAX_LENGTH - len(header) - len(sources) - 4
+    parts = [header, explanation.text[: max(room, 0)].rstrip(), sources]
     return "\n\n".join(part for part in parts if part)
 
 

@@ -169,7 +169,7 @@ class WatchlistCapability:
     ) -> Explanation | None:
         kept = self._marker(symbol)
         if kept is not None and kept.trading_day == day and kept.explanation_text:
-            return Explanation(kept.explanation_text, kept.explanation_links)
+            return Explanation(kept.explanation_text, kept.explanation_sources)
         return self._ports.explainer.explain(
             build_question(self._title(symbol), price, alerts, day)
         )
@@ -262,7 +262,7 @@ def _applied(current: LevelState, decision: Decision | None, sent: bool) -> Leve
 def _explanation_fields(explanation: Explanation | None) -> tuple[str | None, tuple[str, ...]]:
     if explanation is None:
         return None, ()
-    return explanation.text, explanation.links
+    return explanation.text, explanation.sources
 
 
 def _log_outcome(symbol: str, status: SendStatus, detail: str) -> None:

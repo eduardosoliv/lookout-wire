@@ -87,11 +87,11 @@ def test_ticker_without_a_price_is_reported(world):
 
 def test_explanation_is_attached_when_available(world):
     world.prices.trades = {"MSFT": trade(430.0)}
-    world.explainer.result = Explanation("Cloud growth slowed.", ("https://news.test/a",))
+    world.explainer.result = Explanation("Cloud growth slowed.", ("reuters.com",))
 
     world.run()
 
-    assert world.messenger.sent[0].endswith("Cloud growth slowed.\n\nhttps://news.test/a")
+    assert world.messenger.sent[0].endswith("Cloud growth slowed.\n\nSources: reuters.com")
 
 
 def test_waits_until_the_messenger_is_ready(world):

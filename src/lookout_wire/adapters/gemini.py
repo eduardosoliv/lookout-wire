@@ -11,7 +11,7 @@ from lookout_wire.core.ports import Explainer, Explanation
 
 logger = logging.getLogger(__name__)
 
-MAX_LINKS = 3
+MAX_SOURCES = 3
 
 
 class GeminiExplainer:
@@ -38,7 +38,7 @@ class GeminiExplainer:
         text = (response.text or "").strip()
         if not text:
             return None
-        return Explanation(text=text, links=_links(response))
+        return Explanation(text=text, sources=_sources(response))
 
     def _generate(self, question: str) -> Any:
         return self._client.models.generate_content(
@@ -61,22 +61,23 @@ def build_explainer(api_key: str | None, model: str, timeout_seconds: float) -> 
     return GeminiExplainer(api_key=api_key, model=model, timeout_seconds=timeout_seconds)
 
 
-def _links(response: Any) -> tuple[str, ...]:
-    links: list[str] = []
-    for uri in _chunk_uris(response):
-        if uri.startswith("https://") and uri not in links:
-            links.append(uri)
-    return tuple(links[:MAX_LINKS])
+def _sources(response: Any) -> tuple[str, ...]:
+    """Short source names, usually the site's domain. Gemini's links are long Google redirects."""
+    names: list[str] = []
+    for name in _chunk_names(response):
+        if name not in names:
+            names.append(name)
+    return tuple(names[:MAX_SOURCES])
 
 
-def _chunk_uris(response: Any) -> list[str]:
+def _chunk_names(response: Any) -> list[str]:
     if not response.candidates:
         return []
     metadata = response.candidates[0].grounding_metadata
     if metadata is None:
         return []
-    chunks = metadata.grounding_chunks or []
-    return [chunk.web.uri for chunk in chunks if chunk.web is not None and chunk.web.uri]
+    webs = [chunk.web for chunk in metadata.grounding_chunks or [] if chunk.web is not None]
+    return [name for web in webs if (name := web.title or web.domain)]
 
 
 def describe(error: Exception) -> str:

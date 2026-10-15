@@ -39,7 +39,7 @@ def marker(phase: Phase) -> Marker:
         trading_day=MARKER_DAY,
         alerts=(DIP_ALERT, BUY_ALERT),
         explanation_text="Earnings missed.",
-        explanation_links=("https://example.com/a",),
+        explanation_sources=("reuters.com",),
     )
 
 
@@ -107,3 +107,24 @@ def test_marker_for_a_removed_ticker_is_dropped():
     state = WatchlistState(tickers={}, markers={"NVDA": marker(Phase.IN_FLIGHT)})
 
     assert resolve_markers(state) == WatchlistState(tickers={}, markers={})
+
+
+def test_marker_saved_with_old_links_loads_with_its_text_and_no_sources(tmp_path):
+    import json
+
+    path = tmp_path / "watchlist.json"
+    save_state(
+        path, WatchlistState(tickers={"NVDA": nvda()}, markers={"NVDA": marker(Phase.NOT_SENT)})
+    )
+    document = json.loads(path.read_text())
+    stored = document["markers"]["NVDA"]
+    stored["explanation_links"] = [
+        "https://vertexaisearch.cloud.google.com/grounding-api-redirect/x"
+    ]
+    del stored["explanation_sources"]
+    path.write_text(json.dumps(document))
+
+    loaded = load_state(path).markers["NVDA"]
+
+    assert loaded.explanation_text == "Earnings missed."
+    assert loaded.explanation_sources == ()

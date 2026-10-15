@@ -34,24 +34,22 @@ def test_new_low_is_marked():
     assert text == "*AAPL* $147.00\n⚠️ Dip 2.00% below $150.00, new low"
 
 
-def test_explanation_and_links_follow_the_header():
-    explanation = Explanation(
-        "Shares fell after earnings.", ("https://a.test/1", "https://b.test/2")
-    )
+def test_explanation_and_source_names_follow_the_header():
+    explanation = Explanation("Shares fell after earnings.", ("reuters.com", "cnbc.com"))
 
     text = render(heading("AAPL", None), 149.8, [DIP], explanation)
 
-    assert text.endswith("Shares fell after earnings.\n\nhttps://a.test/1\nhttps://b.test/2")
+    assert text.endswith("Shares fell after earnings.\n\nSources: reuters.com, cnbc.com")
 
 
 def test_long_explanation_is_cut_so_the_message_fits_and_header_survives():
-    explanation = Explanation("x" * 5000, ("https://a.test/1",))
+    explanation = Explanation("x" * 5000, ("reuters.com",))
 
     text = render(heading("AAPL", None), 149.8, [DIP], explanation)
 
     assert len(text) <= MAX_LENGTH
     assert text.startswith("*AAPL* $149.80\n⚠️ Dip 0.13% below $150.00")
-    assert text.endswith("https://a.test/1")
+    assert text.endswith("Sources: reuters.com")
 
 
 def test_question_names_ticker_dollar_price_percentage_and_date():
@@ -85,3 +83,10 @@ def test_question_names_ticker_and_company_without_formatting():
 
     assert "AVGO (Broadcom Inc.)" in question
     assert "*" not in question
+
+
+def test_no_sources_line_without_sources():
+    text = render(heading("AAPL", None), 149.8, [DIP], Explanation("Shares fell.", ()))
+
+    assert text.endswith("Shares fell.")
+    assert "Sources" not in text

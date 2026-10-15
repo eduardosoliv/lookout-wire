@@ -39,7 +39,7 @@ OPEN = Session(
     True, TODAY, datetime(2026, 10, 15, 9, 30, tzinfo=NY), datetime(2026, 10, 15, 16, 0, tzinfo=NY)
 )
 NOW = datetime(2026, 10, 15, 14, 0, tzinfo=UTC)
-EXPLANATION = Explanation("Shares fell after earnings.", ("https://news.test/a",))
+EXPLANATION = Explanation("Shares fell after earnings.", ("reuters.com",))
 
 
 def trade(price, when=NOW):
@@ -111,7 +111,7 @@ def test_explanation_is_attached_when_available(world):
 
     world.capability().run(NOW)
 
-    assert world.messenger.sent[0].endswith("Shares fell after earnings.\n\nhttps://news.test/a")
+    assert world.messenger.sent[0].endswith("Shares fell after earnings.\n\nSources: reuters.com")
     assert "AAPL" in world.explainer.questions[0]
 
 
@@ -171,7 +171,7 @@ def test_in_flight_marker_resolves_as_sent_with_the_marker_day(world):
 def test_not_sent_marker_is_retried_without_a_second_explainer_call(world):
     alert = Alert(Kind.DIP, 150.0, AlertKind.CROSSED, 149.8)
     ticker = TickerState("AAPL", LevelState(Kind.DIP, 150.0))
-    marker = Marker(Phase.NOT_SENT, TODAY, (alert,), EXPLANATION.text, EXPLANATION.links)
+    marker = Marker(Phase.NOT_SENT, TODAY, (alert,), EXPLANATION.text, EXPLANATION.sources)
     save_state(world.state_path, WatchlistState({"AAPL": ticker}, {"AAPL": marker}))
     world.prices.trades = {"AAPL": trade(149.8)}
 

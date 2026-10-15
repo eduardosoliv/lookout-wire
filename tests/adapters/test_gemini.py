@@ -9,8 +9,9 @@ from lookout_wire.core.ports import Explanation
 MODEL = "gemini-3.8-flash"
 
 
-def chunk(uri):
-    return SimpleNamespace(web=SimpleNamespace(uri=uri))
+def chunk(title=None, domain=None):
+    redirect = "https://vertexaisearch.cloud.google.com/grounding-api-redirect/abc"
+    return SimpleNamespace(web=SimpleNamespace(uri=redirect, title=title, domain=domain))
 
 
 def response(text, chunks=None):
@@ -39,21 +40,21 @@ def explainer_returning(result):
     return explainer, models
 
 
-def test_text_and_first_three_https_links():
-    uris = [f"https://example.com/{n}" for n in range(4)]
+def test_text_and_first_three_source_names():
+    titles = ["reuters.com", "cnbc.com", "wsj.com", "bloomberg.com"]
     explainer, _ = explainer_returning(
-        response("  Shares fell on guidance.  ", [chunk(u) for u in uris])
+        response("  Shares fell on guidance.  ", [chunk(title=t) for t in titles])
     )
 
     assert explainer.explain("why?") == Explanation(
-        text="Shares fell on guidance.", links=tuple(uris[:3])
+        text="Shares fell on guidance.", sources=("reuters.com", "cnbc.com", "wsj.com")
     )
 
 
-def test_no_grounding_metadata_gives_no_links():
+def test_no_grounding_metadata_gives_no_sources():
     explainer, _ = explainer_returning(response("Shares fell."))
 
-    assert explainer.explain("why?") == Explanation(text="Shares fell.", links=())
+    assert explainer.explain("why?") == Explanation(text="Shares fell.", sources=())
 
 
 def test_timeout_returns_none_and_logs_warning(caplog):
@@ -66,26 +67,21 @@ def test_timeout_returns_none_and_logs_warning(caplog):
     assert "secret-key" not in caplog.text
 
 
-def test_non_https_uri_is_dropped():
-    chunks = [chunk("http://plain.example.com"), chunk("https://secure.example.com")]
+def test_source_name_falls_back_to_the_domain():
+    explainer, _ = explainer_returning(response("Shares fell.", [chunk(domain="barrons.com")]))
+
+    assert explainer.explain("why?").sources == ("barrons.com",)
+
+
+def test_duplicate_source_names_are_kept_once():
+    chunks = [chunk(title="reuters.com"), chunk(title="reuters.com"), chunk(title="cnbc.com")]
     explainer, _ = explainer_returning(response("Shares fell.", chunks))
 
-    assert explainer.explain("why?").links == ("https://secure.example.com",)
-
-
-def test_duplicate_links_are_kept_once():
-    chunks = [
-        chunk("https://a.example.com"),
-        chunk("https://a.example.com"),
-        chunk("https://b.example.com"),
-    ]
-    explainer, _ = explainer_returning(response("Shares fell.", chunks))
-
-    assert explainer.explain("why?").links == ("https://a.example.com", "https://b.example.com")
+    assert explainer.explain("why?").sources == ("reuters.com", "cnbc.com")
 
 
 def test_empty_text_returns_none():
-    explainer, _ = explainer_returning(response("   ", [chunk("https://a.example.com")]))
+    explainer, _ = explainer_returning(response("   ", [chunk(title="a.com")]))
 
     assert explainer.explain("why?") is None
 

@@ -3,7 +3,7 @@
 A personal WhatsApp agent for financial alerts. One process runs on your laptop, checks the
 watchlist every 2 minutes during US market hours, and messages you in WhatsApp when a stock
 trades below a price you chose. With a Gemini key it adds a short explanation of why the stock
-is down, with source links.
+is down, naming its sources.
 
 ## Setup
 
@@ -116,7 +116,8 @@ Quirks:
 
 - **When Gemini fails, the alert still arrives,** just without the explanation, and the log says
   why.
-- **Unverified:** whether the source links are Google redirect URLs or the publishers' own URLs.
+- **Sources are names, not links.** Gemini's links are long Google redirect URLs, and WhatsApp
+  cannot attach a link to a name, so alerts end with a line like `Sources: reuters.com, cnbc.com`.
 
 ## Commands
 
@@ -166,7 +167,8 @@ crossed:
 
 - ⚠️ marks the Dip level and 🔥 the Buy level. When both fire, only Buy is shown.
 - A later, deeper fall adds ", new low" to the line.
-- With a Gemini key, a short explanation and up to three source links follow.
+- With a Gemini key, a short explanation follows, then up to three source names:
+  `Sources: reuters.com, cnbc.com`.
 
 ## Alert rules
 
@@ -245,13 +247,12 @@ just run
 
 1. Send any message to your agent when the log asks; a greeting comes back.
 2. Within about 3 minutes you get one alert with the price, the level, and, with a Gemini key, a short
-   explanation and links.
+   explanation and its sources.
 3. Later cycles send nothing more for that level today.
 
-Record here whether the explanation links were Google redirect URLs or publisher URLs.
-
-Result: pairing OK on 2026-10-15, greeting received. A real alert during market hours is still to
-come.
+Result: pairing OK on 2026-10-15, greeting received. Explanations OK the same day through
+`just scan` with `gemini-3.8-flash`; its links were Google redirect URLs, so alerts show source
+names instead. A real alert during market hours is still to come.
 
 ## How it works
 

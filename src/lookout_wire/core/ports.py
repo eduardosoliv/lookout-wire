@@ -42,7 +42,7 @@ class SendOutcome:
 @dataclass(frozen=True)
 class Explanation:
     text: str
-    links: tuple[str, ...] = ()
+    sources: tuple[str, ...] = ()
 
 
 class PriceError(Exception):

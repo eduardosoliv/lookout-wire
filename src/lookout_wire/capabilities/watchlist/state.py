@@ -28,7 +28,7 @@ class Marker:
     trading_day: date
     alerts: tuple[Alert, ...]
     explanation_text: str | None = None
-    explanation_links: tuple[str, ...] = ()
+    explanation_sources: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -122,7 +122,7 @@ def _marker_to(marker: Marker) -> dict[str, Any]:
         "trading_day": marker.trading_day.isoformat(),
         "alerts": [_alert_to(alert) for alert in marker.alerts],
         "explanation_text": marker.explanation_text,
-        "explanation_links": list(marker.explanation_links),
+        "explanation_sources": list(marker.explanation_sources),
     }
 
 
@@ -132,7 +132,8 @@ def _marker_from(data: dict[str, Any]) -> Marker:
         trading_day=date.fromisoformat(data["trading_day"]),
         alerts=tuple(_alert_from(alert) for alert in data["alerts"]),
         explanation_text=data["explanation_text"],
-        explanation_links=tuple(data["explanation_links"]),
+        # Markers saved before sources replaced links have no names to show.
+        explanation_sources=tuple(data.get("explanation_sources", [])),
     )
 
 
