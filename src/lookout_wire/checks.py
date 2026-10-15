@@ -3,10 +3,14 @@
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
+from typing import Any
 from zoneinfo import ZoneInfo
 
+import httpx
+
 from lookout_wire.adapters.alpaca import AlpacaCalendar, AlpacaPriceSource
+from lookout_wire.adapters.whatsapp import error_fields
 from lookout_wire.core.loop import utc_now
 from lookout_wire.core.ports import (
     CalendarError,
@@ -15,10 +19,13 @@ from lookout_wire.core.ports import (
     PriceSource,
     Session,
 )
-from lookout_wire.core.settings import SettingsError, load_settings
+from lookout_wire.core.settings import Settings, SettingsError, load_settings
 
 NEW_YORK = ZoneInfo("America/New_York")
 TEST_SYMBOL = "AAPL"
+REPLY_WINDOW = timedelta(hours=24)
+WHATSAPP_TIMEOUT = 15.0
+DEFAULT_SEND_TEXT = "lookout-wire proactive check"
 LIVE_KEYS_HINT = (
     "If these are live keys, set LOOKOUT_ALPACA_TRADING_URL=https://api.alpaca.markets in .env."
 )
@@ -76,20 +83,157 @@ def _describe_session(session: Session) -> str:
     return f"Market {state}. Trading day {day}, session {hours} New York time."
 
 
+def whatsapp_client(
+    token: str, base_url: str, transport: httpx.BaseTransport | None = None
+) -> httpx.Client:
+    return httpx.Client(
+        base_url=base_url,
+        timeout=WHATSAPP_TIMEOUT,
+        headers={"Authorization": f"Bearer {token}"},
+        transport=transport,
+    )
+
+
+def check_whatsapp_id(client: httpx.Client, now: datetime) -> CheckResult:
+    name = "WhatsApp agent"
+    try:
+        response = client.get("/updates", params={"offset": 0, "limit": 100, "timeout": 0})
+    except httpx.HTTPError as error:
+        return CheckResult(name, False, [f"request failed: {type(error).__name__}"])
+    if response.status_code == 204:
+        return CheckResult(
+            name,
+            False,
+            ["No messages yet. Send any message to your agent in WhatsApp, then run this again."],
+        )
+    if not response.is_success:
+        return CheckResult(name, False, [_whatsapp_error(response)])
+    return _describe_updates(name, response.json(), now)
+
+
+def check_whatsapp_send(client: httpx.Client, recipient: str, text: str) -> CheckResult:
+    name = "WhatsApp send"
+    if not recipient.startswith("user:"):
+        return CheckResult(
+            name, False, [f"'{recipient}' is not an id; it should look like user:123."]
+        )
+    body = {
+        "messaging_product": "whatsapp",
+        "to": recipient,
+        "type": "text",
+        "text": {"body": text},
+    }
+    try:
+        response = client.post("/messages", json=body)
+    except httpx.HTTPError as error:
+        return CheckResult(name, False, [f"request failed: {type(error).__name__}"])
+    if not response.is_success:
+        return CheckResult(name, False, [_whatsapp_error(response)])
+    return CheckResult(
+        name,
+        True,
+        [
+            f"Accepted for {recipient}, message id {_sent_id(response)}",
+            "Check that it arrived in WhatsApp.",
+        ],
+    )
+
+
+def _describe_updates(name: str, batch: dict[str, Any], now: datetime) -> CheckResult:
+    values = [c.get("value", {}) for e in batch.get("entry", []) for c in e.get("changes", [])]
+    owner = _owner_id(values)
+    if owner is None:
+        return CheckResult(
+            name,
+            False,
+            ["No id found. Send any message to your agent in WhatsApp, then run this again."],
+        )
+    details = [f"Your id: {owner}"]
+    last = _last_message_time(values, owner)
+    if last is None:
+        details.append("No message from you in the last 30 days.")
+        details.append(f"Ready for the 24-hour check: just whatsapp-send {owner}")
+        return CheckResult(name, True, details)
+    details.append(f"Last message from you: {_new_york(last)} New York time")
+    ready_at = last + REPLY_WINDOW
+    if now >= ready_at:
+        details.append(f"Ready for the 24-hour check: just whatsapp-send {owner}")
+    else:
+        details.append(f"Wait until {_new_york(ready_at)} New York time before the 24-hour check.")
+    return CheckResult(name, True, details)
+
+
+def _owner_id(values: list[dict[str, Any]]) -> str | None:
+    for value in values:
+        for message in value.get("messages", []):
+            return message["from"]
+        for contact in value.get("contacts", []):
+            return contact["wa_id"]
+        for status in value.get("statuses", []):
+            return status["recipient_id"]
+    return None
+
+
+def _last_message_time(values: list[dict[str, Any]], owner: str) -> datetime | None:
+    stamps = [
+        int(message["timestamp"])
+        for value in values
+        for message in value.get("messages", [])
+        if message.get("from") == owner
+    ]
+    if not stamps:
+        return None
+    return datetime.fromtimestamp(max(stamps), UTC)
+
+
+def _new_york(when: datetime) -> str:
+    return when.astimezone(NEW_YORK).strftime("%Y-%m-%d %H:%M")
+
+
+def _whatsapp_error(response: httpx.Response) -> str:
+    code, message = error_fields(response)
+    text = f"HTTP {response.status_code}"
+    if code is not None:
+        text += f" code {code}"
+    return f"{text}: {message}" if message else text
+
+
+def _sent_id(response: httpx.Response) -> str:
+    messages = response.json().get("messages") or [{}]
+    return messages[0].get("id", "unknown")
+
+
 def main(argv: Sequence[str] = sys.argv[1:]) -> int:
     try:
         settings = load_settings()
     except SettingsError as error:
         print(f"Settings: NOT OK\n  {error}")
         return 1
+    command, *args = argv or ["alpaca"]
+    results = _run(command, args, settings)
+    print(render(results))
+    return 0 if all(result.ok for result in results) else 1
+
+
+def _run(command: str, args: Sequence[str], settings: Settings) -> list[CheckResult]:
+    if command == "alpaca":
+        return _run_alpaca(settings)
+    client = whatsapp_client(settings.whatsapp_token.get_secret_value(), settings.whatsapp_base_url)
+    if command == "whatsapp-id":
+        return [check_whatsapp_id(client, utc_now())]
+    if command == "whatsapp-send" and args:
+        text = " ".join(args[1:]) or DEFAULT_SEND_TEXT
+        return [check_whatsapp_send(client, args[0], text)]
+    return [CheckResult("Usage", False, ["checks alpaca | whatsapp-id | whatsapp-send ID [TEXT]"])]
+
+
+def _run_alpaca(settings: Settings) -> list[CheckResult]:
     key_id = settings.alpaca_key_id.get_secret_value()
     secret = settings.alpaca_secret_key.get_secret_value()
     timeout = settings.price_timeout_seconds
     prices = AlpacaPriceSource(key_id, secret, settings.alpaca_data_url, timeout)
     calendar = AlpacaCalendar(key_id, secret, settings.alpaca_trading_url, timeout)
-    results = check_alpaca(prices, calendar, utc_now())
-    print(render(results))
-    return 0 if all(result.ok for result in results) else 1
+    return check_alpaca(prices, calendar, utc_now())
 
 
 if __name__ == "__main__":

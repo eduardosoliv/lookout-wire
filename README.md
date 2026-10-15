@@ -56,17 +56,18 @@ Result: not run yet.
 
 ### 2. WhatsApp delivers a message you did not reply to within a day
 
-Send any message to your agent in WhatsApp, then read your id:
+Send any message to your agent in WhatsApp, then run:
 
 ```bash
 just whatsapp-id
 ```
 
-Copy the `from` value (it looks like `user:123...`). At least 24 hours later, without messaging
-the agent again, send:
+It prints your id (it looks like `user:123...`), when you last messaged the agent, and whether the
+24-hour check can run yet. Once it says ready, without messaging the agent again, send:
 
 ```bash
-just whatsapp-send user:PASTE_ID
+just whatsapp-send user:YOUR_ID
+just whatsapp-send user:YOUR_ID "any text you like"
 ```
 
 The message must arrive. If it is rejected, push alerts cannot work and the design needs a

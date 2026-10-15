@@ -36,21 +36,12 @@ check: lint
 
 # Live check 1: your Alpaca keys serve prices and the market clock
 check-alpaca:
-    uv run python -m lookout_wire.checks
+    uv run python -m lookout_wire.checks alpaca
 
-# Live check 2, step 1: after messaging your agent, show recent messages and your id
+# Live check 2, step 1: after messaging your agent, show your id and when the 24-hour check can run
 whatsapp-id:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    set -a; source .env; set +a
-    curl -sf -H "Authorization: Bearer $LOOKOUT_WHATSAPP_TOKEN" \
-      "https://api.whatsapp.com/agent/v1/updates?offset=0&limit=50&timeout=5"; echo
+    uv run python -m lookout_wire.checks whatsapp-id
 
-# Live check 2, step 2: send a message to an id such as user:123 (run 24 hours later)
-whatsapp-send id message="lookout-wire proactive check":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    set -a; source .env; set +a
-    curl -sf -X POST "https://api.whatsapp.com/agent/v1/messages" \
-      -H "Authorization: Bearer $LOOKOUT_WHATSAPP_TOKEN" -H "Content-Type: application/json" \
-      -d '{"messaging_product":"whatsapp","to":"{{ id }}","type":"text","text":{"body":"{{ message }}"}}'; echo
+# Live check 2, step 2: send a message to your id, e.g. `just whatsapp-send user:123 "hello"`
+whatsapp-send id *text:
+    uv run python -m lookout_wire.checks whatsapp-send {{ quote(id) }} {{ quote(text) }}
