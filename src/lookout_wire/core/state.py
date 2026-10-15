@@ -27,10 +27,10 @@ def write_json(path: Path, document: dict[str, Any]) -> None:
 
 def read_json(path: Path) -> dict[str, Any] | None:
     temp_path(path).unlink(missing_ok=True)
-    if not path.exists():
-        return None
     try:
         return json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None
     except json.JSONDecodeError as error:
         raise StateFileError(f"State file {path} is corrupt: {error}") from None
 

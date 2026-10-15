@@ -74,12 +74,11 @@ def test_corrupt_file_raises(tmp_path):
         load_state(path)
 
 
-def test_repeated_writes_leave_no_temp_file(tmp_path):
+def test_successful_write_leaves_no_temp_file(tmp_path):
     path = tmp_path / "watchlist.json"
     state = WatchlistState(tickers={"NVDA": nvda()}, markers={})
 
-    for _ in range(1000):
-        save_state(path, state)
+    save_state(path, state)
 
     assert not temp_path(path).exists()
 

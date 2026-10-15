@@ -60,9 +60,6 @@ class AlpacaPriceSource:
             trades[symbol] = trade
         return trades
 
-    def close(self) -> None:
-        self._client.close()
-
     def _fetch_snapshots(self, symbols: Sequence[str]) -> dict:
         params = {"symbols": ",".join(symbols), "feed": "iex"}
         try:
@@ -92,20 +89,17 @@ class AlpacaCalendar:
         transport: httpx.BaseTransport | None = None,
     ) -> None:
         self._client = build_client(key_id, secret_key, trading_url, timeout_seconds, transport)
-        self._bounds: dict[date, tuple[datetime | None, datetime | None]] = {}
+        self._bounds: dict[date, tuple[datetime | None, datetime | None]] = {}  # today only
 
     def session(self, now: datetime) -> Session:
         clock = self._get("/v2/clock")
         trading_day = parse_timestamp(clock["timestamp"]).astimezone(NEW_YORK).date()
         if trading_day not in self._bounds:
-            self._bounds[trading_day] = self._fetch_bounds(trading_day)
+            self._bounds = {trading_day: self._fetch_bounds(trading_day)}
         open_, close = self._bounds[trading_day]
         return Session(
             is_open=bool(clock["is_open"]), trading_day=trading_day, open=open_, close=close
         )
-
-    def close(self) -> None:
-        self._client.close()
 
     def _fetch_bounds(self, day: date) -> tuple[datetime | None, datetime | None]:
         days = self._get("/v2/calendar", params={"start": day.isoformat(), "end": day.isoformat()})

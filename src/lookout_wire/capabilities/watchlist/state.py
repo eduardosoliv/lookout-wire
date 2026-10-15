@@ -83,7 +83,7 @@ def _apply_sent(ticker: TickerState, marker: Marker) -> TickerState:
 def _ticker_to(ticker: TickerState) -> dict[str, Any]:
     return {
         "dip": _level_to(ticker.dip),
-        "buy": _level_to(ticker.buy) if ticker.buy else None,
+        "buy": _level_to(ticker.buy) if ticker.buy is not None else None,
     }
 
 
@@ -92,7 +92,7 @@ def _ticker_from(symbol: str, data: dict[str, Any]) -> TickerState:
     return TickerState(
         symbol=symbol,
         dip=_level_from(data["dip"]),
-        buy=_level_from(buy) if buy else None,
+        buy=_level_from(buy) if buy is not None else None,
     )
 
 

@@ -3,13 +3,14 @@
 import logging
 import threading
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import httpx
 
 from lookout_wire.core.capability import FatalError
+from lookout_wire.core.loop import utc_now
 from lookout_wire.core.ports import SendOutcome, SendStatus
 from lookout_wire.core.state import read_json, write_json
 
@@ -25,10 +26,7 @@ GREETING = "lookout-wire is connected. Price alerts will arrive here."
 NOT_ACCEPTED_CODE = 131016
 INVALID_PARAMETER_CODE = 100
 BACKOFF_STATUSES = (SendStatus.RATE_LIMITED, SendStatus.NOT_ACCEPTED)
-
-
-def utc_now() -> datetime:
-    return datetime.now(UTC)
+RETRY_POLL_STATUSES = (409, 429)
 
 
 class WhatsAppMessenger:
@@ -118,7 +116,6 @@ class WhatsAppMessenger:
         return False
 
     def _poll(self, offset: int) -> dict[str, Any] | None:
-        """Returns the batch, or None when the poll should be repeated with the same offset."""
         params = {"offset": offset, "limit": POLL_LIMIT, "timeout": POLL_SECONDS}
         try:
             response = self._client.get("/updates", params=params, timeout=self._poll_timeout)
@@ -130,7 +127,7 @@ class WhatsAppMessenger:
             return response.json()
         if response.status_code == 204:
             return None
-        if response.status_code in (409, 429) or response.status_code >= 500:
+        if response.status_code in RETRY_POLL_STATUSES or response.status_code >= 500:
             logger.warning("WhatsApp poll returned HTTP %s. Retrying.", response.status_code)
             self._stop.wait(self._poll_retry_wait)
             return None
@@ -177,10 +174,10 @@ class WhatsAppMessenger:
 
 def classify(response: httpx.Response) -> SendOutcome:
     status = response.status_code
-    code, message = error_fields(response)
-    detail = f"HTTP {status} code {code}"
     if response.is_success:
         return SendOutcome(SendStatus.SENT, f"HTTP {status} message {message_id(response)}")
+    code, message = error_fields(response)
+    detail = f"HTTP {status} code {code}"
     if is_invalid_token(status, code, message):
         raise FatalError(invalid_token_text(status, message))
     if status == 429:
