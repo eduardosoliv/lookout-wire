@@ -34,6 +34,10 @@ check: lint
     uv run ruff format --check .
     uv run pytest
 
+# Check that watchlist.yaml (or another file) is well formed; needs no keys
+check-watchlist path="":
+    uv run python -m lookout_wire.checks watchlist {{ path }}
+
 # Live check 1: your Alpaca keys serve prices and the market clock
 check-alpaca:
     uv run python -m lookout_wire.checks alpaca

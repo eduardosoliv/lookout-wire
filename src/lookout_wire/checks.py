@@ -1,9 +1,11 @@
 """Live checks against real services, with a short OK / NOT OK report for each."""
 
 import sys
+from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -11,6 +13,7 @@ import httpx
 
 from lookout_wire.adapters.alpaca import AlpacaCalendar, AlpacaPriceSource
 from lookout_wire.adapters.whatsapp import error_fields
+from lookout_wire.capabilities.watchlist.config import Entry, WatchlistFile
 from lookout_wire.core.loop import utc_now
 from lookout_wire.core.ports import (
     CalendarError,
@@ -81,6 +84,34 @@ def _describe_session(session: Session) -> str:
     state = "open" if session.is_open else "closed"
     hours = f"{session.open:%H:%M} to {session.close:%H:%M}"
     return f"Market {state}. Trading day {day}, session {hours} New York time."
+
+
+def check_watchlist(path: Path) -> CheckResult:
+    name = "Watchlist"
+    if not path.exists():
+        return CheckResult(
+            name, False, [f"{path} not found. Create it: cp watchlist.example.yaml {path}"]
+        )
+    parsed = WatchlistFile(path).read()
+    problems = [*parsed.errors, *_duplicates(parsed.entries)]
+    if problems:
+        return CheckResult(name, False, problems)
+    return CheckResult(name, True, [_summary(parsed.entries), f"file: {path}"])
+
+
+def _duplicates(entries: list[Entry]) -> list[str]:
+    counts = Counter(entry.symbol for entry in entries)
+    return [
+        f"{symbol} is listed {count} times; only the last entry is used"
+        for symbol, count in counts.items()
+        if count > 1
+    ]
+
+
+def _summary(entries: list[Entry]) -> str:
+    with_buy = sum(1 for entry in entries if entry.buy is not None)
+    dip_only = len(entries) - with_buy
+    return f"{len(entries)} tickers: {with_buy} with a Buy level, {dip_only} with a Dip level only"
 
 
 def whatsapp_client(
@@ -204,15 +235,31 @@ def _sent_id(response: httpx.Response) -> str:
 
 
 def main(argv: Sequence[str] = sys.argv[1:]) -> int:
+    command, *args = argv or ["alpaca"]
+    results = _run_watchlist(args) if command == "watchlist" else _run_with_settings(command, args)
+    print(render(results))
+    return 0 if all(result.ok for result in results) else 1
+
+
+def _run_watchlist(args: Sequence[str]) -> list[CheckResult]:
+    path = Path(args[0]) if args else _configured_watchlist_path()
+    return [check_watchlist(path)]
+
+
+def _configured_watchlist_path() -> Path:
+    """The path from settings when they load; the checker must still work without keys."""
+    try:
+        return load_settings().watchlist_path
+    except SettingsError:
+        return Settings.model_fields["watchlist_path"].default
+
+
+def _run_with_settings(command: str, args: Sequence[str]) -> list[CheckResult]:
     try:
         settings = load_settings()
     except SettingsError as error:
-        print(f"Settings: NOT OK\n  {error}")
-        return 1
-    command, *args = argv or ["alpaca"]
-    results = _run(command, args, settings)
-    print(render(results))
-    return 0 if all(result.ok for result in results) else 1
+        return [CheckResult("Settings", False, [str(error)])]
+    return _run(command, args, settings)
 
 
 def _run(command: str, args: Sequence[str], settings: Settings) -> list[CheckResult]:
@@ -224,7 +271,8 @@ def _run(command: str, args: Sequence[str], settings: Settings) -> list[CheckRes
     if command == "whatsapp-send" and args:
         text = " ".join(args[1:]) or DEFAULT_SEND_TEXT
         return [check_whatsapp_send(client, args[0], text)]
-    return [CheckResult("Usage", False, ["checks alpaca | whatsapp-id | whatsapp-send ID [TEXT]"])]
+    usage = "checks alpaca | watchlist [PATH] | whatsapp-id | whatsapp-send ID [TEXT]"
+    return [CheckResult("Usage", False, [usage])]
 
 
 def _run_alpaca(settings: Settings) -> list[CheckResult]:

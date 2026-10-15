@@ -43,7 +43,7 @@ class WatchlistFile:
         try:
             document = self._load()
         except (OSError, yaml.YAMLError, ValidationError) as error:
-            message = f"Watchlist {self._path} could not be parsed: {error}"
+            message = f"Watchlist {self._path} could not be parsed: {_describe(error)}"
             return ParseResult(
                 entries=list(self._last_good), errors=[message], invalid_symbols=set(), parsed=False
             )
@@ -66,3 +66,19 @@ def _validate(document: _Document) -> ParseResult:
             continue
         entries.append(entry)
     return ParseResult(entries=entries, errors=errors, invalid_symbols=invalid)
+
+
+def _describe(error: Exception) -> str:
+    if not isinstance(error, ValidationError):
+        return str(error)
+    return "; ".join(_describe_field(item) for item in error.errors())
+
+
+def _describe_field(item) -> str:
+    location = item["loc"]
+    if len(location) >= 2 and location[0] == "tickers" and isinstance(location[1], int):
+        where = f"ticker {location[1] + 1}"
+        if len(location) > 2:
+            where += f", {location[2]}"
+        return f"{where}: {item['msg']}"
+    return f"{'.'.join(str(part) for part in location) or 'file'}: {item['msg']}"

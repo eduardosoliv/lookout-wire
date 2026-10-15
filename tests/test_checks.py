@@ -5,6 +5,7 @@ import httpx
 
 from lookout_wire.checks import (
     check_alpaca,
+    check_watchlist,
     check_whatsapp_id,
     check_whatsapp_send,
     render,
@@ -215,3 +216,69 @@ def test_send_check_names_a_network_failure():
 
     assert not result.ok
     assert "ConnectError" in render([result])
+
+
+def write(tmp_path, text):
+    path = tmp_path / "watchlist.yaml"
+    path.write_text(text)
+    return path
+
+
+def test_watchlist_check_counts_tickers(tmp_path):
+    path = write(
+        tmp_path,
+        "tickers:\n  - symbol: AAPL\n    dip: 235\n    buy: 200\n  - symbol: MSFT\n    dip: 440\n",
+    )
+
+    result = check_watchlist(path)
+    text = render([result])
+
+    assert result.ok
+    assert "Watchlist: OK" in text
+    assert "2 tickers: 1 with a Buy level, 1 with a Dip level only" in text
+
+
+def test_watchlist_check_reports_buy_not_below_dip(tmp_path):
+    path = write(tmp_path, "tickers:\n  - symbol: AAPL\n    dip: 200\n    buy: 235\n")
+
+    result = check_watchlist(path)
+
+    assert not result.ok
+    assert "AAPL: buy 235.0 must be below dip 200.0" in render([result])
+
+
+def test_watchlist_check_reports_a_symbol_listed_twice(tmp_path):
+    path = write(
+        tmp_path, "tickers:\n  - symbol: AAPL\n    dip: 235\n  - symbol: aapl\n    dip: 230\n"
+    )
+
+    result = check_watchlist(path)
+
+    assert not result.ok
+    assert "AAPL is listed 2 times; only the last entry is used" in render([result])
+
+
+def test_watchlist_check_reports_a_broken_file(tmp_path):
+    path = write(tmp_path, "tickers: [ : broken")
+
+    result = check_watchlist(path)
+
+    assert not result.ok
+    assert "could not be parsed" in render([result])
+
+
+def test_watchlist_check_reports_a_missing_file(tmp_path):
+    result = check_watchlist(tmp_path / "missing.yaml")
+
+    assert not result.ok
+    assert "cp watchlist.example.yaml" in render([result])
+
+
+def test_watchlist_check_names_the_ticker_and_field_with_a_bad_value(tmp_path):
+    path = write(tmp_path, "tickers:\n  - symbol: AAPL\n    dip: abc\n")
+
+    text = render([check_watchlist(path)])
+
+    assert "ticker 1, dip: Input should be a valid number" in text
+    assert "_Document" not in text
+    assert "errors.pydantic.dev" not in text

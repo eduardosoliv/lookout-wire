@@ -13,6 +13,7 @@ Needs [uv](https://docs.astral.sh/uv/) and [just](https://github.com/casey/just)
 just install
 cp .env.example .env                       # fill in your keys
 cp watchlist.example.yaml watchlist.yaml   # edit your tickers
+just check-watchlist
 just run
 ```
 
@@ -31,6 +32,7 @@ Run `just` to list every recipe.
 | `just test` | Run the tests; extra arguments go to pytest, e.g. `just test -k rules` |
 | `just fix` | Fix what ruff can fix, then format |
 | `just lint` / `just format` | Lint only / format only |
+| `just check-watchlist` | Check `watchlist.yaml` is well formed: valid numbers, Buy below Dip, no symbol twice. Needs no keys |
 | `just check-alpaca` | Live check 1, below |
 | `just whatsapp-id` / `just whatsapp-send ID` | Live check 2, below |
 
