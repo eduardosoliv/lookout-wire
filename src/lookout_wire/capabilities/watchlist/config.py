@@ -19,6 +19,7 @@ class ParseResult:
     entries: list[Entry]
     errors: list[str]
     invalid_symbols: set[str]
+    parsed: bool = True
 
 
 class _Ticker(BaseModel):
@@ -44,7 +45,7 @@ class WatchlistFile:
         except (OSError, yaml.YAMLError, ValidationError) as error:
             message = f"Watchlist {self._path} could not be parsed: {error}"
             return ParseResult(
-                entries=list(self._last_good), errors=[message], invalid_symbols=set()
+                entries=list(self._last_good), errors=[message], invalid_symbols=set(), parsed=False
             )
         result = _validate(document)
         self._last_good = result.entries

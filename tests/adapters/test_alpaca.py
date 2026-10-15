@@ -210,3 +210,19 @@ def test_clock_body_that_is_not_json_raises_calendar_error():
 
     with pytest.raises(CalendarError):
         cal.session(datetime(2026, 10, 15, 14, 0, tzinfo=UTC))
+
+
+def test_snapshot_with_unexpected_shape_raises_price_error():
+    source = price_source(
+        lambda request: httpx.Response(200, json={"AAPL": {"latestTrade": {"x": 1}}})
+    )
+
+    with pytest.raises(PriceError):
+        source.latest_trades(["AAPL"])
+
+
+def test_clock_with_unexpected_shape_raises_calendar_error():
+    cal = calendar(lambda request: httpx.Response(200, json={"unexpected": True}))
+
+    with pytest.raises(CalendarError):
+        cal.session(datetime(2026, 10, 15, 14, 0, tzinfo=UTC))

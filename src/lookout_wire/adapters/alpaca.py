@@ -53,7 +53,10 @@ class AlpacaPriceSource:
         snapshots = self._fetch_snapshots(symbols)
         trades = {}
         for symbol in symbols:
-            trade = self._trade_from(snapshots.get(symbol))
+            try:
+                trade = self._trade_from(snapshots.get(symbol))
+            except (KeyError, TypeError, AttributeError, ValueError) as error:
+                raise PriceError(f"unexpected snapshot shape: {type(error).__name__}") from error
             if trade is None:
                 log.warning("No latest trade for %s", symbol)
                 continue
@@ -93,7 +96,10 @@ class AlpacaCalendar:
 
     def session(self, now: datetime) -> Session:
         clock = self._get("/v2/clock")
-        trading_day = parse_timestamp(clock["timestamp"]).astimezone(NEW_YORK).date()
+        try:
+            trading_day = parse_timestamp(clock["timestamp"]).astimezone(NEW_YORK).date()
+        except (KeyError, TypeError, AttributeError, ValueError) as error:
+            raise CalendarError(f"unexpected clock shape: {type(error).__name__}") from error
         if trading_day not in self._bounds:
             self._bounds = {trading_day: self._fetch_bounds(trading_day)}
         open_, close = self._bounds[trading_day]

@@ -345,3 +345,124 @@ def test_covers_r3_unparseable_watchlist_keeps_state(world):
 
     assert not world.level().armed
     assert len(world.messenger.sent) == 1
+
+
+def test_review_1_broken_watchlist_at_startup_keeps_saved_state(world):
+    alert = Alert(Kind.DIP, 150.0, AlertKind.CROSSED, 149.8)
+    fired = LevelState(Kind.DIP, 150.0, armed=False, baseline=149.8, last_message_day=TODAY)
+    save_state(world.state_path, WatchlistState({"AAPL": TickerState("AAPL", fired)}, {}))
+    world.watchlist_path.write_text("tickers: [ : broken")
+    world.prices.trades = {"AAPL": trade(149.0)}
+    capability = world.capability()
+
+    capability.run(NOW)
+    world.watchlist_path.write_text("tickers:\n  - symbol: AAPL\n    dip: 150\n")
+    capability.run(NOW)
+
+    assert world.messenger.sent == []
+    assert world.level() == fired
+    assert alert.price == fired.baseline
+
+
+def test_review_5_ticker_with_config_error_is_not_evaluated(world):
+    world.prices.trades = {"AAPL": trade(151.0)}
+    capability = world.capability()
+    capability.run(NOW)
+    world.watchlist_path.write_text("tickers:\n  - symbol: AAPL\n    dip: 150\n    buy: 160\n")
+    world.prices.trades = {"AAPL": trade(149.0)}
+
+    capability.run(NOW)
+
+    assert world.messenger.sent == []
+    assert world.level().armed
+
+
+def test_review_4_readable_clock_resets_the_health_counter(world):
+    capability = world.capability()
+    world.calendar.error = CalendarError("blip")
+    for _ in range(HEALTH_THRESHOLD - 1):
+        capability.run(NOW)
+    world.calendar.error = None
+    world.calendar.current = Session(False, TODAY, OPEN.open, OPEN.close)
+    capability.run(NOW)
+    world.calendar.error = CalendarError("blip")
+
+    for _ in range(HEALTH_THRESHOLD - 1):
+        capability.run(NOW)
+
+    assert world.messenger.sent == []
+
+
+def test_review_3_failure_notice_is_retried_until_accepted(world):
+    world.prices.error = PriceError("down")
+    world.messenger.outcomes.append(SendOutcome(SendStatus.NOT_ACCEPTED))
+    capability = world.capability()
+
+    for _ in range(HEALTH_THRESHOLD + 1):
+        capability.run(NOW)
+
+    assert len(world.messenger.sent) == 2
+    assert all("cannot read market data" in text for text in world.messenger.sent)
+
+
+def test_review_3_no_recovery_notice_when_failure_notice_never_arrived(world):
+    world.prices.error = PriceError("down")
+    world.messenger.is_ready = False
+    capability = world.capability()
+    for _ in range(HEALTH_THRESHOLD):
+        capability.run(NOW)
+
+    world.prices.error = None
+    world.prices.trades = {"AAPL": trade(151.0)}
+    world.messenger.is_ready = True
+    capability.run(NOW)
+
+    assert world.messenger.sent == []
+
+
+def test_rate_limited_marker_is_saved_before_the_cycle_ends(world, monkeypatch):
+    from lookout_wire.capabilities.watchlist import capability as module
+
+    world.prices.trades = {"AAPL": trade(149.8)}
+    world.messenger.outcomes.append(SendOutcome(SendStatus.RATE_LIMITED))
+    capability = world.capability()
+    saved = []
+    original = module.save_state
+
+    def record(path, state):
+        saved.append({s: m.phase for s, m in state.markers.items()})
+        original(path, state)
+
+    monkeypatch.setattr(module, "save_state", record)
+    capability._reconcile()
+    capability._check_all(NOW)
+
+    assert {"AAPL": Phase.NOT_SENT} in saved
+
+
+def test_stale_day_not_sent_marker_fetches_a_fresh_explanation(world):
+    alert = Alert(Kind.DIP, 150.0, AlertKind.CROSSED, 149.8)
+    ticker = TickerState("AAPL", LevelState(Kind.DIP, 150.0))
+    stale = Marker(Phase.NOT_SENT, YESTERDAY, (alert,), "Yesterday's story.", ())
+    save_state(world.state_path, WatchlistState({"AAPL": ticker}, {"AAPL": stale}))
+    world.prices.trades = {"AAPL": trade(149.8)}
+    world.explainer.result = EXPLANATION
+
+    world.capability().run(NOW)
+
+    assert len(world.explainer.questions) == 1
+    assert "Yesterday's story." not in world.messenger.sent[0]
+    assert EXPLANATION.text in world.messenger.sent[0]
+
+
+def test_one_ticker_without_a_trade_does_not_block_the_other(tmp_path):
+    world = World(
+        tmp_path, "tickers:\n  - symbol: AAPL\n    dip: 150\n  - symbol: MSFT\n    dip: 400\n"
+    )
+    world.prices.trades = {"AAPL": trade(149.8)}
+
+    world.capability().run(NOW)
+
+    assert len(world.messenger.sent) == 1
+    assert world.messenger.sent[0].startswith("AAPL")
+    assert world.level("MSFT").armed

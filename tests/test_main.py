@@ -32,3 +32,39 @@ def test_covers_f1_pairing_runs_before_the_capability_is_built(tmp_path, monkeyp
 
     assert events == ["paired", "built"]
     assert [c.name for c in capabilities] == ["watchlist"]
+
+
+def test_missing_settings_exit_with_code_2(monkeypatch):
+    import pytest
+
+    from lookout_wire.core.settings import SettingsError
+
+    def fail():
+        raise SettingsError("Invalid settings: LOOKOUT_WHATSAPP_TOKEN: Field required")
+
+    monkeypatch.setattr(main, "load_settings", fail)
+    monkeypatch.setattr(main, "configure_logging", lambda: None)
+
+    with pytest.raises(SystemExit) as exit_info:
+        main.main()
+
+    assert exit_info.value.code == 2
+
+
+def test_fatal_error_while_building_exits_with_code_1(tmp_path, monkeypatch):
+    import pytest
+
+    from lookout_wire.core.capability import FatalError
+
+    def fatal(settings, stop):
+        raise FatalError("token revoked")
+
+    monkeypatch.setattr(main, "load_settings", lambda: settings(tmp_path))
+    monkeypatch.setattr(main, "configure_logging", lambda: None)
+    monkeypatch.setattr(main, "install_signal_handlers", lambda stop: None)
+    monkeypatch.setattr(main, "build_capabilities", fatal)
+
+    with pytest.raises(SystemExit) as exit_info:
+        main.main()
+
+    assert exit_info.value.code == 1

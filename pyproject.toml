@@ -29,6 +29,10 @@ build-backend = "uv_build"
 testpaths = ["tests"]
 addopts = "-q --import-mode=importlib"
 pythonpath = ["."]
+filterwarnings = [
+    # Raised inside google-genai on Python 3.14; not actionable in this project.
+    "ignore:'_UnionGenericAlias' is deprecated:DeprecationWarning:google.genai.types",
+]
 
 [tool.ruff]
 line-length = 100

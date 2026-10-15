@@ -54,27 +54,40 @@ class WatchlistCapability:
         self._saved = load_state(state_path)
         self._state = resolve_markers(self._saved)
         self._failures = 0
+        self._skipped: set[str] = set()
+        self._notice: str | None = None
+        self._failure_notice_delivered = False
         self._save()
 
     def run(self, now: datetime) -> None:
         self._reconcile()
         self._check_all(now)
+        self._send_pending_notice(now)
         self._save()
 
     def _check_all(self, now: datetime) -> None:
         session = self._session(now)
-        if session is None or not session.is_open:
+        if session is None:
+            return
+        if not session.is_open:
+            self._record_success()
             return
         trades = self._trades()
         if trades is None:
             return
-        for ticker in list(self._state.tickers.values()):
+        for ticker in self._active_tickers():
             self._check(ticker, trades.get(ticker.symbol), session, now)
+
+    def _active_tickers(self) -> list[TickerState]:
+        return [t for t in self._state.tickers.values() if t.symbol not in self._skipped]
 
     def _reconcile(self) -> None:
         parsed = self._watchlist.read()
         for error in parsed.errors:
             log.warning("Watchlist: %s", error)
+        if not parsed.parsed:
+            return
+        self._skipped = parsed.invalid_symbols
         tickers = reconcile(self._state.tickers, parsed.entries, parsed.invalid_symbols)
         markers = {s: m for s, m in self._state.markers.items() if s in tickers}
         self._state = WatchlistState(tickers, markers)
@@ -88,7 +101,7 @@ class WatchlistCapability:
             return None
 
     def _trades(self) -> dict[str, Trade] | None:
-        symbols = list(self._state.tickers)
+        symbols = [ticker.symbol for ticker in self._active_tickers()]
         if not symbols:
             return None
         try:
@@ -142,6 +155,7 @@ class WatchlistCapability:
         if outcome.status in RETRY_LATER:
             log.warning("Alert for %s not sent (%s); retrying", ticker.symbol, outcome.detail)
             self._set(unsent, replace(marker, phase=Phase.NOT_SENT))
+            self._save()
             return
         _log_outcome(ticker.symbol, outcome.status, outcome.detail)
         self._set(_ticker_with(ticker, decisions, sent=True), marker=None)
@@ -186,12 +200,21 @@ class WatchlistCapability:
     def _record_failure(self) -> None:
         self._failures += 1
         if self._failures == HEALTH_THRESHOLD:
-            self._ports.messenger.send(FAILURE_NOTICE)
+            self._notice = FAILURE_NOTICE
 
     def _record_success(self) -> None:
         if self._failures >= HEALTH_THRESHOLD:
-            self._ports.messenger.send(RECOVERY_NOTICE)
+            self._notice = RECOVERY_NOTICE if self._failure_notice_delivered else None
         self._failures = 0
+
+    def _send_pending_notice(self, now: datetime) -> None:
+        if self._notice is None or not self._ports.messenger.ready(now):
+            return
+        outcome = self._ports.messenger.send(self._notice)
+        if outcome.status in RETRY_LATER:
+            return
+        self._failure_notice_delivered = self._notice == FAILURE_NOTICE
+        self._notice = None
 
 
 def build_watchlist(settings: Settings, ports: Ports) -> WatchlistCapability:
