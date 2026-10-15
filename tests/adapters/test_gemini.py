@@ -6,7 +6,7 @@ from google.genai import types
 from lookout_wire.adapters.gemini import GeminiExplainer, NullExplainer, build_explainer
 from lookout_wire.core.ports import Explanation
 
-MODEL = "gemini-3.5-flash-lite"
+MODEL = "gemini-3.8-flash"
 
 
 def chunk(uri):

@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     whatsapp_base_url: str = "https://api.whatsapp.com/agent/v1"
 
     gemini_api_key: SecretStr | None = None
-    gemini_model: str = "gemini-3.5-flash-lite"
+    gemini_model: str = "gemini-3.8-flash"
 
     interval_seconds: float = 10.0
     watchlist_path: Path = Path("watchlist.yaml")
