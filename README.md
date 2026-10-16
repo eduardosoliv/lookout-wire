@@ -134,6 +134,7 @@ Run `just` to list every recipe.
 | `just check-watchlist` | Check `watchlist.yaml` is well formed: valid numbers, Buy below Dip, no symbol twice. Needs no keys |
 | `just check` | Lint, format check, and tests: run before every commit |
 | `just test` | Run the tests; extra arguments go to pytest, e.g. `just test -k rules` |
+| `just coverage` | Test coverage per file, listing lines no test runs. `just coverage html` also writes `htmlcov/index.html` |
 | `just fix` | Fix what ruff can fix, then format |
 | `just lint` / `just format` | Lint only / format only |
 | `just check-alpaca` | Live check 1, below |

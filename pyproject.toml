@@ -18,6 +18,7 @@ lookout-wire = "lookout_wire.main:main"
 [dependency-groups]
 dev = [
     "pytest>=9.1",
+    "pytest-cov>=7.1.0",
     "ruff>=0.17",
 ]
 

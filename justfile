@@ -21,6 +21,10 @@ scan:
 test *args:
     uv run pytest {{ args }}
 
+# Measure test coverage; lists the lines no test runs. `just coverage html` also writes htmlcov/
+coverage report="term":
+    uv run pytest --cov=lookout_wire --cov-branch --cov-report=term-missing:skip-covered {{ if report == "html" { "--cov-report=html" } else { "" } }}
+
 # Report lint problems
 lint:
     uv run ruff check .

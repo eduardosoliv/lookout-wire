@@ -7,3 +7,5 @@ __pycache__/
 state/
 watchlist.yaml
 .DS_Store
+.coverage
+htmlcov/

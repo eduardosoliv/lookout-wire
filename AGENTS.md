@@ -28,6 +28,7 @@ Python 3.14, managed with uv. Tasks run through `just`:
 |---|---|
 | `just check` | Lint, format check, and all tests. Must pass before every commit; the pre-commit hook in `.githooks/` enforces it |
 | `just test -k <pattern>` | Run a subset of tests |
+| `just coverage` | Coverage report with uncovered lines; check new code is covered |
 | `just fix` | Auto-fix lint, then format |
 | `just check-watchlist` | Validate `watchlist.yaml` |
 | `just run` / `just scan` | Start the agent / one-shot scan. These use the owner's real accounts |
