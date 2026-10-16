@@ -1,0 +1,12 @@
+.env
+.env.*
+.venv/
+.git/
+state/
+watchlist.yaml
+.coverage
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+**/__pycache__/
+**/.DS_Store
