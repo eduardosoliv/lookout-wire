@@ -1,10 +1,12 @@
+import os
+import signal
 import threading
 from datetime import UTC, datetime
 
 import pytest
 
 from lookout_wire.core.capability import FatalError
-from lookout_wire.core.loop import Loop
+from lookout_wire.core.loop import Loop, install_signal_handlers
 
 NOW = datetime(2026, 10, 15, 15, 0, tzinfo=UTC)
 
@@ -92,3 +94,17 @@ def test_interval_controls_the_wait():
     thread.join(timeout=1)
 
     assert 2 <= len(calls) <= 4
+
+
+@pytest.mark.parametrize("signum", [signal.SIGTERM, signal.SIGINT])
+def test_stop_signals_set_the_stop_event(signum):
+    stop = threading.Event()
+    originals = {s: signal.getsignal(s) for s in (signal.SIGINT, signal.SIGTERM)}
+    try:
+        install_signal_handlers(stop)
+        os.kill(os.getpid(), signum)
+    finally:
+        for s, handler in originals.items():
+            signal.signal(s, handler)
+
+    assert stop.is_set()

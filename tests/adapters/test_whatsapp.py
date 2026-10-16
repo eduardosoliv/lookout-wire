@@ -394,3 +394,34 @@ def test_greeting_with_unknown_outcome_completes_pairing(build):
     messenger.ensure_paired()
 
     assert messenger.recipient_id == OWNER
+
+
+def test_poll_retries_after_a_network_failure(build):
+    script = Script(httpx.ConnectError("refused"), updates(1, (OWNER, START)), sent())
+    messenger = build(script, paired=False)
+
+    messenger.ensure_paired()
+
+    assert messenger.recipient_id == OWNER
+    assert len(script.polls()) == 2
+
+
+def test_poll_with_an_unexpected_client_error_raises_fatal_error(build, state_path):
+    messenger = build(Script(error(404, 803, "Unknown path")), paired=False)
+
+    with pytest.raises(FatalError) as raised:
+        messenger.ensure_paired()
+
+    assert "HTTP 404" in str(raised.value)
+    assert "Unknown path" in str(raised.value)
+    assert read_json(state_path) is None
+
+
+def test_poll_with_an_invalid_token_raises_fatal_error_about_the_token(build):
+    messenger = build(Script(error(401, 190, "(#190) Invalid OAuth access token")), paired=False)
+
+    with pytest.raises(FatalError) as raised:
+        messenger.ensure_paired()
+
+    assert "token" in str(raised.value)
+    assert TOKEN not in str(raised.value)

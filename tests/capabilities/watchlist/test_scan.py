@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 import pytest
 
 from lookout_wire.capabilities.watchlist.config import WatchlistFile
-from lookout_wire.capabilities.watchlist.scan import scan
+from lookout_wire.capabilities.watchlist.scan import ScanReport, describe, scan
 from lookout_wire.core.capability import FatalError
 from lookout_wire.core.ports import Explanation, Ports, SendOutcome, SendStatus, Trade
 from tests.fakes import FakeCalendar, FakeClock, FakeExplainer, FakeMessenger, FakePriceSource
@@ -129,3 +129,20 @@ def test_fatal_error_stops_the_scan(world):
 
     with pytest.raises(FatalError):
         world.run()
+
+
+def test_summary_lists_tickers_without_a_price_and_failed_sends():
+    report = ScanReport(sent=["NVDA"], above=[], no_price=["AAPL"], failed=["MSFT"])
+
+    assert describe(report).splitlines() == [
+        "Sent (1): NVDA",
+        "Above their levels, nothing sent (0)",
+        "No price from Alpaca (1): AAPL",
+        "Could not send (1): MSFT",
+    ]
+
+
+def test_summary_starts_with_watchlist_problems():
+    report = ScanReport(sent=[], above=["AAPL"], no_price=[], failed=[], problems=["ticker 2, dip"])
+
+    assert describe(report).splitlines()[0] == "Watchlist: ticker 2, dip"

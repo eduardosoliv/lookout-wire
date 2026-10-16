@@ -2,7 +2,9 @@ from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
 
 import httpx
+import pytest
 
+from lookout_wire import checks
 from lookout_wire.checks import (
     check_alpaca,
     check_watchlist,
@@ -12,6 +14,7 @@ from lookout_wire.checks import (
     whatsapp_client,
 )
 from lookout_wire.core.ports import CalendarError, PriceError, Session, Trade
+from lookout_wire.core.settings import SettingsError
 from tests.fakes import FakeCalendar, FakePriceSource
 
 NY = ZoneInfo("America/New_York")
@@ -282,3 +285,48 @@ def test_watchlist_check_names_the_ticker_and_field_with_a_bad_value(tmp_path):
     assert "ticker 1, dip: Input should be a valid number" in text
     assert "_Document" not in text
     assert "errors.pydantic.dev" not in text
+
+
+def no_settings():
+    raise SettingsError("Invalid settings: LOOKOUT_WHATSAPP_TOKEN: Field required")
+
+
+def test_watchlist_command_works_without_keys(tmp_path, monkeypatch, capsys):
+    path = write(tmp_path, "tickers:\n  - symbol: AAPL\n    dip: 235\n")
+    monkeypatch.setattr(checks, "load_settings", no_settings)
+
+    assert checks.main(["watchlist", str(path)]) == 0
+    assert "Watchlist: OK" in capsys.readouterr().out
+
+
+def test_watchlist_command_falls_back_to_the_default_path_without_keys(
+    tmp_path, monkeypatch, capsys
+):
+    write(tmp_path, "tickers:\n  - symbol: AAPL\n    dip: 235\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(checks, "load_settings", no_settings)
+
+    assert checks.main(["watchlist"]) == 0
+    assert "Watchlist: OK" in capsys.readouterr().out
+
+
+def test_live_command_without_settings_is_not_ok(monkeypatch, capsys):
+    monkeypatch.setattr(checks, "load_settings", no_settings)
+
+    assert checks.main(["whatsapp-id"]) == 1
+    out = capsys.readouterr().out
+    assert "Settings: NOT OK" in out
+    assert "LOOKOUT_WHATSAPP_TOKEN" in out
+
+
+@pytest.mark.parametrize("argv", [["nonsense"], ["whatsapp-send"]])
+def test_unknown_or_incomplete_command_prints_usage(monkeypatch, capsys, argv):
+    from lookout_wire.core.settings import Settings
+
+    fake = Settings(alpaca_key_id="k", alpaca_secret_key="s", whatsapp_token="t", _env_file=None)
+    monkeypatch.setattr(checks, "load_settings", lambda: fake)
+
+    assert checks.main(argv) == 1
+    out = capsys.readouterr().out
+    assert "Usage: NOT OK" in out
+    assert "whatsapp-send ID [TEXT]" in out
