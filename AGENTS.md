@@ -71,7 +71,10 @@ The owner wants code that is simple to read and maintain:
 - Never sleep in tests. Inject a clock (`tests/fakes.FakeClock`) or a sleep function.
 - Write the test first and watch it fail before writing the code.
 - Assert on what the code returns, stores, or sends, not on calls between internal parts.
-- Acceptance examples in the plan (AE1 to AE20) each have a test; keep the `Covers AE<N>` names.
+- Name each test for the behavior it checks, in plain words a reader understands without the plan:
+  `test_trade_from_before_the_market_open_is_ignored`, not `test_covers_ae17_...`. Never put plan
+  codes (AE, R, KTD, F, U numbers) or ticket IDs in test names, docstrings, or comments.
+- Each acceptance example in the plan (AE1 to AE20) still has a test; find it by its behavior.
 
 ## Messages and timing
 

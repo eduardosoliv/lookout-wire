@@ -153,7 +153,7 @@ def test_after_2xx_the_next_send_waits_at_least_10_seconds(build, clock):
     assert messenger.ready(clock.now + timedelta(seconds=10))
 
 
-def test_covers_ae11_429_backoff_doubles_caps_at_60_and_resets_after_2xx(build, clock):
+def test_429_backoff_doubles_caps_at_60_seconds_and_resets_after_success(build, clock):
     script = Script(*[httpx.Response(429)] * 6, sent(), httpx.Response(429))
     messenger = build(script)
     expected = [10, 20, 40, 60, 60, 60]
@@ -309,9 +309,7 @@ def test_ensure_paired_reuses_a_stored_id_without_polling(build):
     assert script.requests == []
 
 
-def test_covers_ae13_pairing_ignores_older_messages_and_greets_the_new_sender(
-    build, state_path, clock
-):
+def test_pairing_ignores_older_messages_and_greets_the_new_sender(build, state_path, clock):
     script = Script(
         updates(7, ("user:old", START - timedelta(minutes=5))),
         empty(),

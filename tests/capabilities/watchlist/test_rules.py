@@ -25,14 +25,14 @@ def fired(price: float, day: date) -> LevelState:
     return dip(armed=False, baseline=price, last_message_day=day)
 
 
-def test_covers_ae1_armed_dip_crosses():
+def test_armed_dip_alerts_when_the_price_crosses_below():
     decision = evaluate(dip(), 149.80, TODAY)
 
     assert decision.alert == Alert(Kind.DIP, 150, AlertKind.CROSSED, 149.80)
     assert decision.state == fired(149.80, TODAY)
 
 
-def test_covers_ae2_dip_and_buy_both_fire_in_one_cycle():
+def test_dip_and_buy_both_fire_in_one_cycle():
     buy = LevelState(kind=Kind.BUY, level=130)
 
     dip_decision = evaluate(dip(), 128, TODAY)
@@ -44,14 +44,14 @@ def test_covers_ae2_dip_and_buy_both_fire_in_one_cycle():
     assert not buy_decision.state.armed
 
 
-def test_covers_ae3_lower_price_same_day_sends_nothing():
+def test_lower_price_on_the_same_day_sends_nothing():
     decision = evaluate(fired(149.80, TODAY), 147, TODAY)
 
     assert decision.alert is None
     assert decision.state == fired(149.80, TODAY)
 
 
-def test_covers_ae4_new_low_on_a_later_day_then_capped():
+def test_new_low_on_a_later_day_alerts_once_that_day():
     first = evaluate(fired(149.80, YESTERDAY), 147, TODAY)
     second = evaluate(first.state, 145, TODAY)
 
@@ -61,14 +61,14 @@ def test_covers_ae4_new_low_on_a_later_day_then_capped():
     assert second.state == fired(147, TODAY)
 
 
-def test_covers_ae5_price_above_baseline_sends_nothing():
+def test_price_above_the_last_notified_low_sends_nothing():
     decision = evaluate(fired(149.80, YESTERDAY), 149.90, TODAY)
 
     assert decision.alert is None
     assert decision.state == fired(149.80, YESTERDAY)
 
 
-def test_covers_ae6_rearms_silently_then_crosses():
+def test_level_rearms_silently_then_alerts_on_the_next_cross():
     rearmed = evaluate(fired(149.80, YESTERDAY), 150.00, TODAY)
     crossed = evaluate(rearmed.state, 149.50, TODAY)
 
@@ -78,7 +78,7 @@ def test_covers_ae6_rearms_silently_then_crosses():
     assert crossed.state == fired(149.50, TODAY)
 
 
-def test_covers_ae19_same_day_refire_is_silent_and_keeps_baseline():
+def test_same_day_recross_is_silent_and_keeps_the_last_notified_low():
     rearmed = evaluate(fired(149.90, TODAY), 150.05, TODAY)
     capped = evaluate(rearmed.state, 149.85, TODAY)
     later = evaluate(capped.state, 149.87, TOMORROW)
@@ -96,7 +96,7 @@ def test_armed_level_above_price_is_unchanged():
     assert decision.state == dip()
 
 
-def test_covers_r12_buy_fires_while_dip_disarmed():
+def test_buy_fires_while_dip_is_disarmed():
     states = {
         "NVDA": TickerState(
             symbol="NVDA",
@@ -116,7 +116,7 @@ def test_record_sent_sets_baseline_and_day():
     assert record_sent(dip(), alert, TODAY) == fired(149.80, TODAY)
 
 
-def test_covers_ae8_changed_level_resets_to_armed():
+def test_changed_level_resets_to_armed():
     states = {"AAPL": TickerState(symbol="AAPL", dip=fired(149.80, YESTERDAY))}
 
     states = reconcile(states, [Entry("AAPL", dip=145)], keep=set())

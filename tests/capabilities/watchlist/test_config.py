@@ -24,7 +24,7 @@ def test_valid_file_parses_with_upper_cased_symbols(tmp_path):
     assert result.invalid_symbols == set()
 
 
-def test_covers_ae12_buy_above_dip_is_reported_and_others_return(tmp_path):
+def test_buy_above_dip_is_reported_and_other_tickers_still_load(tmp_path):
     text = """
 tickers:
   - symbol: AAPL
@@ -41,7 +41,7 @@ tickers:
     assert "AAPL" in result.errors[0]
 
 
-def test_covers_ae18_unparseable_file_returns_last_good_watchlist(tmp_path):
+def test_unparseable_file_returns_the_last_good_watchlist(tmp_path):
     path = write(tmp_path, VALID)
     watchlist = WatchlistFile(path)
     good = watchlist.read()

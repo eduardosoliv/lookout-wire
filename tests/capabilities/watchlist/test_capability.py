@@ -84,7 +84,7 @@ def world(tmp_path):
     return World(tmp_path)
 
 
-def test_covers_ae1_crossing_sends_one_message_and_persists_disarmed(world):
+def test_crossing_a_level_sends_one_message_and_saves_it_disarmed(world):
     world.prices.trades = {"AAPL": trade(149.8)}
 
     world.capability().run(NOW)
@@ -95,7 +95,7 @@ def test_covers_ae1_crossing_sends_one_message_and_persists_disarmed(world):
     assert world.markers() == {}
 
 
-def test_covers_ae2_both_levels_crossing_send_one_message(tmp_path):
+def test_crossing_dip_and_buy_together_sends_one_message(tmp_path):
     world = World(tmp_path, "tickers:\n  - symbol: NVDA\n    dip: 150\n    buy: 130\n")
     world.prices.trades = {"NVDA": trade(128.0)}
 
@@ -115,7 +115,7 @@ def test_explanation_is_attached_when_available(world):
     assert "AAPL" in world.explainer.questions[0]
 
 
-def test_covers_ae9_failed_explanation_still_sends_the_alert(world):
+def test_failed_explanation_still_sends_the_alert(world):
     world.prices.trades = {"AAPL": trade(149.8)}
     world.explainer.result = None
 
@@ -124,7 +124,7 @@ def test_covers_ae9_failed_explanation_still_sends_the_alert(world):
     assert world.messenger.sent == ["*AAPL* $149.80\n⚠️ Dip 0.13% below $150.00"]
 
 
-def test_covers_ae10_closed_session_fetches_nothing_and_sends_nothing(world):
+def test_closed_market_fetches_no_prices_and_sends_nothing(world):
     world.calendar.current = Session(False, TODAY, OPEN.open, OPEN.close)
     world.prices.trades = {"AAPL": trade(149.8)}
 
@@ -135,7 +135,7 @@ def test_covers_ae10_closed_session_fetches_nothing_and_sends_nothing(world):
     assert world.messenger.sent == []
 
 
-def test_covers_ae17_trade_before_the_open_is_skipped(world):
+def test_trade_from_before_the_market_open_is_ignored(world):
     world.prices.trades = {"AAPL": trade(149.8, datetime(2026, 10, 15, 13, 0, tzinfo=UTC))}
 
     world.capability().run(NOW)
@@ -144,7 +144,7 @@ def test_covers_ae17_trade_before_the_open_is_skipped(world):
     assert world.level().armed
 
 
-def test_covers_ae7_restart_after_alert_sends_nothing(world):
+def test_restart_after_an_alert_does_not_send_it_again(world):
     world.prices.trades = {"AAPL": trade(149.8)}
     world.capability().run(NOW)
     world.prices.trades = {"AAPL": trade(149.0)}
@@ -261,7 +261,7 @@ def test_failed_marker_write_skips_the_send(world, monkeypatch):
     assert world.markers() == {}
 
 
-def test_covers_ae15_rejected_recipient_records_the_level_as_sent(world):
+def test_rejected_recipient_records_the_level_as_sent(world):
     world.prices.trades = {"AAPL": trade(149.8)}
     world.messenger.outcomes.append(SendOutcome(SendStatus.REJECTED_RECIPIENT))
 
@@ -280,7 +280,7 @@ def test_other_client_error_records_the_level_as_sent(world):
     assert not world.level().armed
 
 
-def test_covers_ae14_unknown_outcome_records_the_level_as_sent(world):
+def test_unknown_send_outcome_records_the_level_as_sent(world):
     world.prices.trades = {"AAPL": trade(149.8)}
     world.messenger.outcomes.append(SendOutcome(SendStatus.UNKNOWN))
 
@@ -290,7 +290,7 @@ def test_covers_ae14_unknown_outcome_records_the_level_as_sent(world):
     assert world.markers() == {}
 
 
-def test_covers_ae16_fatal_send_persists_not_sent_marker_and_propagates(world):
+def test_fatal_send_error_saves_a_not_sent_marker_and_stops(world):
     world.prices.trades = {"AAPL": trade(149.8)}
     world.explainer.result = EXPLANATION
     world.messenger.outcomes.append(FatalError("token revoked"))
@@ -307,7 +307,7 @@ def test_covers_ae16_fatal_send_persists_not_sent_marker_and_propagates(world):
     assert len(world.explainer.questions) == 1
 
 
-def test_covers_ae20_health_notice_after_consecutive_failures_and_recovery(world):
+def test_health_notice_after_repeated_failures_and_on_recovery(world):
     world.prices.error = PriceError("down")
     capability = world.capability()
 
@@ -335,7 +335,7 @@ def test_clock_failures_count_toward_the_health_notice(world):
     assert len(world.messenger.sent) == 1
 
 
-def test_covers_r3_unparseable_watchlist_keeps_state(world):
+def test_unparseable_watchlist_leaves_saved_state_unchanged(world):
     world.prices.trades = {"AAPL": trade(149.8)}
     capability = world.capability()
     capability.run(NOW)
