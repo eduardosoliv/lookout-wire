@@ -277,39 +277,6 @@ Result: pairing OK on 2026-10-15, greeting received. Explanations OK the same da
 `just scan` with `gemini-3.8-flash`; its links were Google redirect URLs, so alerts show source
 names instead. A real alert during market hours is still to come.
 
-## Deploy on Railway
-
-The repo's `Dockerfile` runs the agent as a long-lived worker. Railway builds it on every push to
-`main` and restarts the agent; a restart is safe because sent alerts are recorded before each send.
-
-One-time setup in the Railway dashboard:
-
-1. Create a service from the GitHub repo. It needs no public domain.
-2. Attach a volume to the service, mounted at `/data`. Alert state and the WhatsApp pairing live
-   there, so they survive deploys.
-3. In Variables, open the raw editor and paste your `.env` contents, then add:
-
-   ```
-   LOOKOUT_STATE_DIR=/data/state
-   LOOKOUT_WATCHLIST_PATH=/data/watchlist.yaml
-   ```
-
-4. Copy your watchlist onto the volume with the Railway CLI (`brew install railway`):
-
-   ```bash
-   railway login
-   railway link
-   railway ssh -- sh -c 'cat > /data/watchlist.yaml' < watchlist.yaml
-   ```
-
-   Run the same command after each watchlist edit; the agent rereads the file every cycle.
-5. Watch the deploy logs. On the first start the agent waits for pairing: send it any message in
-   WhatsApp.
-
-Run only one copy of the agent: stop `just run` on your laptop once Railway is running, or both
-will send every alert. The server starts with empty alert state, so a ticker already below a level
-alerts once more.
-
 ## How it works
 
 - `src/lookout_wire/main.py` loads settings, pairs with WhatsApp, and runs the loop, or a one-shot
