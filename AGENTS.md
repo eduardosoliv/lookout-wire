@@ -53,28 +53,12 @@ the owner asks: they use real keys and send real WhatsApp messages.
 To add a capability: create the package, give it a factory `(settings, ports) -> Capability`,
 register it in `CAPABILITIES` in `main.py`, and add tests. The main loop should not need changes.
 
-## Code style
+## Coding standards
 
-The owner wants code that is simple to read and maintain:
-
-- Early returns instead of nested conditionals.
-- Short functions and small classes. Split a function before it needs a comment to explain it.
-- Plain, explicit code over clever code. No abstraction without a current use.
-- Comments only for a reason the code cannot show, such as a vendor quirk.
-- Ruff settings live in `pyproject.toml` (line length 100). Run `just fix` rather than
-  formatting by hand.
-
-## Tests
-
-- Tests must never open a network connection; `tests/conftest.py` enforces this. Use
-  `httpx.MockTransport` for HTTP and injected stubs for SDKs.
-- Never sleep in tests. Inject a clock (`tests/fakes.FakeClock`) or a sleep function.
-- Write the test first and watch it fail before writing the code.
-- Assert on what the code returns, stores, or sends, not on calls between internal parts.
-- Name each test for the behavior it checks, in plain words a reader understands without the plan:
-  `test_trade_from_before_the_market_open_is_ignored`, not `test_covers_ae17_...`. Never put plan
-  codes (AE, R, KTD, F, U numbers) or ticket IDs in test names, docstrings, or comments.
-- Each acceptance example in the plan (AE1 to AE20) still has a test; find it by its behavior.
+`coding-standards.md` holds every code and test rule: complexity, function and class size,
+duplication, feature envy, magic values, shared state, naming, dead code, errors, comments, and
+tests. Read it before writing code. The owner's short version: early returns, short functions,
+plain code, and test names that describe behavior.
 
 ## Messages and timing
 
@@ -109,7 +93,15 @@ the plan. In short:
 
 ## Git
 
+Before every commit:
+
+1. Run `just check` (the pre-commit hook runs it again) and stage the files by path, never with
+   `git add .`.
+2. Run the `coding-standards-reviewer` subagent (`.claude/agents/`, runs on Sonnet) on the staged
+   change.
+3. Fix every must-fix finding, stage again, and rerun the reviewer until it returns `PASS`. A
+   consider finding may be declined; give the reason in your report to the owner.
+
 - Commit messages use conventional commits (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`).
-- Stage files by path; never `git add .`.
 - Never bypass the pre-commit hook with `--no-verify`; fix what it reports.
 - Never push or create a remote without the owner asking.
