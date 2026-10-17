@@ -127,6 +127,10 @@ Before every commit:
 3. Fix every must-fix finding, stage again, and rerun the reviewer until it returns `PASS`. A
    consider finding may be declined; give the reason in your report to the owner.
 
+- Work on a branch, never directly on `main`. Changes reach `main` through a pull request.
 - Commit messages use conventional commits (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`).
 - Never bypass the pre-commit hook with `--no-verify`; fix what it reports.
-- Never push or create a remote without the owner asking.
+- Never push, open a pull request, or create a remote without the owner asking.
+- The `CI` GitHub Actions workflow (`.github/workflows/ci.yml`) runs `just check` on every pull
+  request. Branch protection on `main` requires it to pass before merging; never merge a pull
+  request with a failing or pending check.

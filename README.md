@@ -151,6 +151,9 @@ A pre-commit hook in `.githooks/` runs `just check` before every commit and stop
 anything fails. `just install` switches it on. To skip it once in an emergency, use
 `git commit --no-verify`.
 
+Changes reach `main` through pull requests. GitHub Actions runs the same `just check` on every
+pull request (`.github/workflows/ci.yml`), and `main` only accepts a merge once it passes.
+
 ## Watchlist
 
 `watchlist.yaml` lists the tickers to watch. It is gitignored, so your levels stay on your laptop.
