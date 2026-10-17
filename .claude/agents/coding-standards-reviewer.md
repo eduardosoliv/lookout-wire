@@ -30,7 +30,7 @@ edit files, stage, commit, or run anything that changes the repository or sends 
 - A limit in the standards is a review trigger. When the change states a reason for exceeding one,
   or the code is an exception the standards name, do not flag it.
 - Never run `just run`, `just scan`, `just check-alpaca`, or `just whatsapp-*`, and never read
-  `.env` or any `.env*` file.
+  `.env` or any other `.env*` file except `.env.example`, which holds no secrets.
 
 ## Report
 
