@@ -116,6 +116,10 @@ Quirks:
   "
   ```
 
+- **A slow answer fails with `HTTP 504 DEADLINE_EXCEEDED`, not a client timeout.** The SDK
+  passes the timeout to Google, and Google stops the search-grounded answer when it runs out. The
+  default is 30 seconds; set `LOOKOUT_EXPLAIN_TIMEOUT_SECONDS` to change it. An alert waits up to
+  that long for its explanation.
 - **When Gemini fails, the alert still arrives,** just without the explanation, and the log says
   why.
 - **Sources are names, not links.** Gemini's links are long Google redirect URLs, and WhatsApp

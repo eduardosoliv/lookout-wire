@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     enabled_capabilities: list[str] = ["watchlist"]
 
     price_timeout_seconds: float = 5.0
-    explain_timeout_seconds: float = 20.0
+    explain_timeout_seconds: float = 30.0
     send_connect_timeout_seconds: float = 5.0
     send_read_timeout_seconds: float = 15.0
     poll_read_timeout_seconds: float = 30.0
