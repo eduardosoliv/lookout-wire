@@ -49,6 +49,9 @@ the owner asks: they use real keys and send real WhatsApp messages.
   `CAPABILITIES`, runs the loop.
 - `src/lookout_wire/checks.py`: the live and watchlist checks behind the `just` recipes.
 - `tests/fakes.py`: in-memory fakes for every port. Use them; do not mock internals.
+- `docs/solutions/`: learnings from past problems (bugs, practices, workflow), one folder per
+  category, with YAML frontmatter (`module`, `tags`, `problem_type`). Relevant when working in an
+  area they cover.
 
 To add a capability: create the package, give it a factory `(settings, ports) -> Capability`,
 register it in `CAPABILITIES` in `main.py`, and add tests. The main loop should not need changes.
