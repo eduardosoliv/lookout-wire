@@ -109,10 +109,12 @@ the plan. In short:
 
 ## Secrets
 
-- Keys live in `.env`, which is gitignored. Never read, print, or commit `.env`, and never log
-  settings objects, request headers, or URLs with query strings.
-- The owner's permission settings block agents from reading any `.env*` file, including
-  `.env.example`. Ask the owner to make changes to `.env.example`.
+- Keys live in `.env`, which is gitignored. Never read, edit, print, or commit `.env`, and never
+  log settings objects, request headers, or URLs with query strings. The owner's permission
+  settings block agents from reading `.env` and every other `.env*` file except `.env.example`.
+- `.env.example` is committed and holds no secrets. Agents may read and edit it, and must keep it
+  in step with `core/settings.py` when a setting is added, renamed, or given a new default. Never
+  put a real key in it.
 - `watchlist.yaml` and `state/` are the owner's private data and are gitignored. Do not commit
   them.
 
