@@ -4,6 +4,7 @@ earlier alerts. It never reads or writes alert state, so the agent's own alerts 
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from enum import Enum, auto
 
 from lookout_wire.capabilities.watchlist.config import Entry, WatchlistFile
 from lookout_wire.capabilities.watchlist.message import build_question, heading, render, title
@@ -15,6 +16,13 @@ RETRY_LATER = (SendStatus.RATE_LIMITED, SendStatus.NOT_ACCEPTED)
 DELIVERED = (SendStatus.SENT, SendStatus.UNKNOWN)
 
 
+class Result(Enum):
+    SENT = auto()
+    ABOVE = auto()
+    NO_PRICE = auto()
+    FAILED = auto()
+
+
 @dataclass
 class ScanReport:
     sent: list[str] = field(default_factory=list)
@@ -22,6 +30,15 @@ class ScanReport:
     no_price: list[str] = field(default_factory=list)
     failed: list[str] = field(default_factory=list)
     problems: list[str] = field(default_factory=list)
+
+    def add(self, symbol: str, result: Result) -> None:
+        lists = {
+            Result.SENT: self.sent,
+            Result.ABOVE: self.above,
+            Result.NO_PRICE: self.no_price,
+            Result.FAILED: self.failed,
+        }
+        lists[result].append(symbol)
 
 
 def scan(
@@ -31,31 +48,24 @@ def scan(
     report = ScanReport(problems=list(parsed.errors))
     trades = ports.prices.latest_trades([entry.symbol for entry in parsed.entries])
     for entry in parsed.entries:
-        _scan_entry(entry, trades.get(entry.symbol), ports, sleep, report)
+        report.add(entry.symbol, _scan_entry(entry, trades.get(entry.symbol), ports, sleep))
     return report
 
 
 def _scan_entry(
-    entry: Entry,
-    trade: Trade | None,
-    ports: Ports,
-    sleep: Callable[[float], None],
-    report: ScanReport,
-) -> None:
+    entry: Entry, trade: Trade | None, ports: Ports, sleep: Callable[[float], None]
+) -> Result:
     if trade is None:
-        report.no_price.append(entry.symbol)
-        return
+        return Result.NO_PRICE
     alerts = _alerts(entry, trade.price)
     if not alerts:
-        report.above.append(entry.symbol)
-        return
+        return Result.ABOVE
     day = trade.timestamp.date()
     question = build_question(title(entry.symbol, entry.name), trade.price, alerts, day)
     explanation = ports.explainer.explain(question)
     text = render(heading(entry.symbol, entry.name), trade.price, alerts, explanation)
     outcome = _send(ports, text, sleep)
-    target = report.sent if outcome.status in DELIVERED else report.failed
-    target.append(entry.symbol)
+    return Result.SENT if outcome.status in DELIVERED else Result.FAILED
 
 
 def _alerts(entry: Entry, price: float) -> list[Alert]:

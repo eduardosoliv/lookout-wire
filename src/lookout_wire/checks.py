@@ -5,13 +5,14 @@ from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from http import HTTPStatus
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
 import httpx
 
-from lookout_wire.adapters.alpaca import AlpacaCalendar, AlpacaPriceSource
+from lookout_wire.adapters.alpaca import AlpacaCalendar, AlpacaKeys, AlpacaPriceSource
 from lookout_wire.adapters.whatsapp import error_fields
 from lookout_wire.capabilities.watchlist.config import Entry, WatchlistFile
 from lookout_wire.core.loop import utc_now
@@ -132,7 +133,7 @@ def check_whatsapp_id(client: httpx.Client, now: datetime) -> CheckResult:
         response = client.get("/updates", params={"offset": 0, "limit": 100, "timeout": 0})
     except httpx.HTTPError as error:
         return CheckResult(name, False, [f"request failed: {type(error).__name__}"])
-    if response.status_code == 204:
+    if response.status_code == HTTPStatus.NO_CONTENT:
         return CheckResult(
             name,
             False,
@@ -277,11 +278,12 @@ def _run(command: str, args: Sequence[str], settings: Settings) -> list[CheckRes
 
 
 def _run_alpaca(settings: Settings) -> list[CheckResult]:
-    key_id = settings.alpaca_key_id.get_secret_value()
-    secret = settings.alpaca_secret_key.get_secret_value()
+    keys = AlpacaKeys(
+        settings.alpaca_key_id.get_secret_value(), settings.alpaca_secret_key.get_secret_value()
+    )
     timeout = settings.price_timeout_seconds
-    prices = AlpacaPriceSource(key_id, secret, settings.alpaca_data_url, timeout)
-    calendar = AlpacaCalendar(key_id, secret, settings.alpaca_trading_url, timeout)
+    prices = AlpacaPriceSource(keys, settings.alpaca_data_url, timeout)
+    calendar = AlpacaCalendar(keys, settings.alpaca_trading_url, timeout)
     return check_alpaca(prices, calendar, utc_now())
 
 

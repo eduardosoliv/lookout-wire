@@ -5,7 +5,7 @@ import sys
 import threading
 from collections.abc import Sequence
 
-from lookout_wire.adapters.alpaca import AlpacaCalendar, AlpacaPriceSource
+from lookout_wire.adapters.alpaca import AlpacaCalendar, AlpacaKeys, AlpacaPriceSource
 from lookout_wire.adapters.gemini import build_explainer
 from lookout_wire.adapters.whatsapp import WhatsAppMessenger
 from lookout_wire.capabilities.watchlist.capability import build_watchlist
@@ -89,12 +89,13 @@ def build_ports(settings: Settings, stop: threading.Event) -> Ports:
         poll_read_timeout=settings.poll_read_timeout_seconds,
     )
     messenger.ensure_paired()
-    key_id = settings.alpaca_key_id.get_secret_value()
-    secret = settings.alpaca_secret_key.get_secret_value()
+    keys = AlpacaKeys(
+        settings.alpaca_key_id.get_secret_value(), settings.alpaca_secret_key.get_secret_value()
+    )
     timeout = settings.price_timeout_seconds
     return Ports(
-        prices=AlpacaPriceSource(key_id, secret, settings.alpaca_data_url, timeout),
-        calendar=AlpacaCalendar(key_id, secret, settings.alpaca_trading_url, timeout),
+        prices=AlpacaPriceSource(keys, settings.alpaca_data_url, timeout),
+        calendar=AlpacaCalendar(keys, settings.alpaca_trading_url, timeout),
         messenger=messenger,
         explainer=build_explainer(
             _gemini_key(settings), settings.gemini_model, settings.explain_timeout_seconds

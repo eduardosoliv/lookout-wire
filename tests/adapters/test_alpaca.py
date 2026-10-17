@@ -5,21 +5,22 @@ from zoneinfo import ZoneInfo
 import httpx
 import pytest
 
-from lookout_wire.adapters.alpaca import AlpacaCalendar, AlpacaPriceSource
+from lookout_wire.adapters.alpaca import AlpacaCalendar, AlpacaKeys, AlpacaPriceSource
 from lookout_wire.core.ports import CalendarError, PriceError, Session, Trade
 
 NEW_YORK = ZoneInfo("America/New_York")
 DATA_URL = "https://data.example"
 TRADING_URL = "https://trading.example"
+KEYS = AlpacaKeys("key", "secret")
 NOW = datetime(2026, 10, 15, 15, 0, tzinfo=UTC)
 
 
 def price_source(handler) -> AlpacaPriceSource:
-    return AlpacaPriceSource("key", "secret", DATA_URL, 5.0, transport=httpx.MockTransport(handler))
+    return AlpacaPriceSource(KEYS, DATA_URL, 5.0, transport=httpx.MockTransport(handler))
 
 
 def calendar(handler) -> AlpacaCalendar:
-    return AlpacaCalendar("key", "secret", TRADING_URL, 5.0, transport=httpx.MockTransport(handler))
+    return AlpacaCalendar(KEYS, TRADING_URL, 5.0, transport=httpx.MockTransport(handler))
 
 
 def trading_handler(clock: dict, days: list, calls: list):
@@ -231,3 +232,8 @@ def test_clock_with_unexpected_shape_raises_calendar_error():
 def test_rejected_request_names_the_http_status():
     with pytest.raises(PriceError, match="HTTP 403"):
         price_source(lambda request: httpx.Response(403)).latest_trades(["AAPL"])
+
+
+def test_keys_never_show_the_secret_when_printed():
+    assert "secret" not in repr(KEYS)
+    assert "key_id='key'" in repr(KEYS)

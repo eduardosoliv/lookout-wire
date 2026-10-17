@@ -77,13 +77,17 @@ def _describe(error: Exception) -> str:
 
 
 def _describe_field(item) -> str:
-    location = item["loc"]
-    if len(location) >= 2 and location[0] == "tickers" and isinstance(location[1], int):
-        where = f"ticker {location[1] + 1}"
-        if len(location) > 2:
-            where += f", {location[2]}"
-        return f"{where}: {item['msg']}"
-    return f"{'.'.join(str(part) for part in location) or 'file'}: {item['msg']}"
+    return f"{_where(item['loc'])}: {item['msg']}"
+
+
+def _where(location: tuple) -> str:
+    """Pydantic locates a bad value as ("tickers", index, field); owners count tickers from 1."""
+    match location:
+        case ("tickers", int(index), field, *_):
+            return f"ticker {index + 1}, {field}"
+        case ("tickers", int(index)):
+            return f"ticker {index + 1}"
+    return ".".join(str(part) for part in location) or "file"
 
 
 def _clean(name: str | None) -> str | None:

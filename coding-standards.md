@@ -6,9 +6,12 @@ maintain: a reader should understand a function on the first pass, without the p
 `AGENTS.md` carries a short summary of these rules; this file is the full version. Change both
 together.
 
-Ruff and `just check` enforce formatting, imports, and some lint. Everything else here is checked
-in review: before each commit, the `coding-standards-reviewer` agent reviews the staged change
-against this file (see `AGENTS.md`).
+Ruff runs in `just check` and enforces formatting, imports, and these limits: complexity,
+returns, branches, statements, parameters, magic values in comparisons, boolean flag parameters,
+commented-out code, naive datetimes, private access from tests, and pytest style. A `# noqa` needs
+a reason after `--`, such as `# noqa: PLR0913 -- adapter configuration, passed by keyword only`.
+Everything else here is checked in review: before each commit, the `coding-standards-reviewer`
+agent reviews the staged change against this file (see `AGENTS.md`).
 
 Limits below are review triggers, not targets. Code under a limit can still be too complex, and a
 reason stated in the change can justify going over one.

@@ -7,6 +7,7 @@ socket would freeze the loop.
 import logging
 import re
 from collections.abc import Sequence
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time
 from zoneinfo import ZoneInfo
 
@@ -32,27 +33,32 @@ def describe(error: Exception) -> str:
     return type(error).__name__
 
 
+@dataclass(frozen=True)
+class AlpacaKeys:
+    key_id: str
+    secret_key: str = field(repr=False)
+
+    def headers(self) -> dict[str, str]:
+        return {"APCA-API-KEY-ID": self.key_id, "APCA-API-SECRET-KEY": self.secret_key}
+
+
 def build_client(
-    key_id: str, secret_key: str, base_url: str, timeout_seconds: float, transport
+    keys: AlpacaKeys, base_url: str, timeout_seconds: float, transport
 ) -> httpx.Client:
     return httpx.Client(
-        base_url=base_url,
-        timeout=timeout_seconds,
-        headers={"APCA-API-KEY-ID": key_id, "APCA-API-SECRET-KEY": secret_key},
-        transport=transport,
+        base_url=base_url, timeout=timeout_seconds, headers=keys.headers(), transport=transport
     )
 
 
 class AlpacaPriceSource:
     def __init__(
         self,
-        key_id: str,
-        secret_key: str,
+        keys: AlpacaKeys,
         data_url: str,
         timeout_seconds: float,
         transport: httpx.BaseTransport | None = None,
     ) -> None:
-        self._client = build_client(key_id, secret_key, data_url, timeout_seconds, transport)
+        self._client = build_client(keys, data_url, timeout_seconds, transport)
 
     def latest_trades(self, symbols: Sequence[str]) -> dict[str, Trade]:
         if not symbols:
@@ -92,13 +98,12 @@ class AlpacaPriceSource:
 class AlpacaCalendar:
     def __init__(
         self,
-        key_id: str,
-        secret_key: str,
+        keys: AlpacaKeys,
         trading_url: str,
         timeout_seconds: float,
         transport: httpx.BaseTransport | None = None,
     ) -> None:
-        self._client = build_client(key_id, secret_key, trading_url, timeout_seconds, transport)
+        self._client = build_client(keys, trading_url, timeout_seconds, transport)
         self._bounds: dict[date, tuple[datetime | None, datetime | None]] = {}  # today only
 
     def session(self, now: datetime) -> Session:

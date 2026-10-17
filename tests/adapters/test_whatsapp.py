@@ -103,7 +103,7 @@ def state_path(tmp_path):
 
 @pytest.fixture
 def build(state_path, stop, clock):
-    def make(script: Script, paired: bool = True) -> WhatsAppMessenger:
+    def make(script: Script, *, paired: bool = True) -> WhatsAppMessenger:
         if paired:
             write_json(state_path, {"recipient_id": OWNER})
         messenger = WhatsAppMessenger(
@@ -178,7 +178,8 @@ def test_503_with_131016_is_not_accepted_with_backoff(build, clock):
     outcome = messenger.send("hi")
 
     assert outcome.status == SendStatus.NOT_ACCEPTED
-    assert "503" in outcome.detail and "131016" in outcome.detail
+    assert "503" in outcome.detail
+    assert "131016" in outcome.detail
     assert not messenger.ready(clock.now + timedelta(seconds=9.9))
 
 
@@ -236,7 +237,8 @@ def test_400_code_100_with_a_field_name_is_the_length_cap_and_does_not_raise(bui
     outcome = messenger.send("x" * 5000)
 
     assert outcome.status == SendStatus.OTHER_CLIENT_ERROR
-    assert "400" in outcome.detail and "100" in outcome.detail
+    assert "400" in outcome.detail
+    assert "100" in outcome.detail
 
 
 def test_400_code_131009_is_other_client_error(build):

@@ -1,6 +1,7 @@
 """The watchlist capability: one tick checks every ticker and sends alerts for crossed levels."""
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import date, datetime
 from pathlib import Path
@@ -128,24 +129,18 @@ class WatchlistCapability:
         )
         alerts = decisions.alerts()
         if not alerts:
-            self._set(_ticker_with(ticker, decisions, sent=True), marker=None)
+            self._set(_ticker_sent(ticker, decisions), marker=None)
             return
         if not self._ports.messenger.ready(now):
-            self._set(_ticker_with(ticker, decisions, sent=False), self._marker(ticker.symbol))
+            self._set(_ticker_unsent(ticker, decisions), self._marker(ticker.symbol))
             return
-        self._alert(ticker, decisions, alerts, trade.price, day)
+        self._alert(ticker, decisions, trade.price, day)
 
-    def _alert(
-        self,
-        ticker: TickerState,
-        decisions: Decisions,
-        alerts: list[Alert],
-        price: float,
-        day: date,
-    ) -> None:
+    def _alert(self, ticker: TickerState, decisions: Decisions, price: float, day: date) -> None:
+        alerts = decisions.alerts()
         explanation = self._explanation(ticker.symbol, price, alerts, day)
         marker = Marker(Phase.IN_FLIGHT, day, tuple(alerts), *_explanation_fields(explanation))
-        unsent = _ticker_with(ticker, decisions, sent=False)
+        unsent = _ticker_unsent(ticker, decisions)
         if not self._write_marker(unsent, marker):
             return
         try:
@@ -162,7 +157,7 @@ class WatchlistCapability:
             self._save()
             return
         _log_outcome(ticker.symbol, outcome.status, outcome.detail)
-        self._set(_ticker_with(ticker, decisions, sent=True), marker=None)
+        self._set(_ticker_sent(ticker, decisions), marker=None)
 
     def _explanation(
         self, symbol: str, price: float, alerts: list[Alert], day: date
@@ -245,18 +240,31 @@ class Decisions:
         return [alert for alert in found if alert is not None]
 
 
-def _ticker_with(ticker: TickerState, decisions: Decisions, sent: bool) -> TickerState:
+type LevelUpdate = Callable[[LevelState, Decision | None], LevelState]
+
+
+def _ticker_sent(ticker: TickerState, decisions: Decisions) -> TickerState:
+    return _ticker_applying(ticker, decisions, _state_after_send)
+
+
+def _ticker_unsent(ticker: TickerState, decisions: Decisions) -> TickerState:
     """A level whose decision carries an alert changes only once that alert was sent."""
-    buy = _applied(ticker.buy, decisions.buy, sent) if ticker.buy is not None else None
-    return replace(ticker, dip=_applied(ticker.dip, decisions.dip, sent), buy=buy)
+    return _ticker_applying(ticker, decisions, _state_before_send)
 
 
-def _applied(current: LevelState, decision: Decision | None, sent: bool) -> LevelState:
-    if decision is None:
+def _ticker_applying(ticker: TickerState, decisions: Decisions, update: LevelUpdate) -> TickerState:
+    buy = update(ticker.buy, decisions.buy) if ticker.buy is not None else None
+    return replace(ticker, dip=update(ticker.dip, decisions.dip), buy=buy)
+
+
+def _state_after_send(current: LevelState, decision: Decision | None) -> LevelState:
+    return current if decision is None else decision.state
+
+
+def _state_before_send(current: LevelState, decision: Decision | None) -> LevelState:
+    if decision is None or decision.alert is not None:
         return current
-    if decision.alert is None or sent:
-        return decision.state
-    return current
+    return decision.state
 
 
 def _explanation_fields(explanation: Explanation | None) -> tuple[str | None, tuple[str, ...]]:

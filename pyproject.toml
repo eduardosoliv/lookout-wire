@@ -40,4 +40,26 @@ line-length = 100
 target-version = "py314"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "UP", "SIM", "RET", "N"]
+select = [
+    "E", "F", "I", "B", "UP", "SIM", "RET", "N",
+    # Limits from coding-standards.md: complexity, size, parameters, magic values, flags
+    "C90", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR0917", "PLR2004", "FBT001", "FBT002",
+    # Commented-out code, naive datetimes, security, private access, pytest style
+    "ERA", "DTZ", "S", "SLF", "PT",
+    # Small correctness and idiom checks
+    "PIE", "C4", "PERF", "FURB", "FLY", "G", "LOG", "A",
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 6
+
+[tool.ruff.lint.pylint]
+max-args = 4
+max-positional-args = 4
+max-branches = 6
+max-returns = 6
+max-statements = 30
+
+[tool.ruff.lint.per-file-ignores]
+# Tests use plain asserts, literal expected values, and fake credentials.
+"tests/**" = ["S101", "S105", "S106", "PLR2004"]

@@ -4,6 +4,7 @@ import logging
 import threading
 from collections.abc import Callable
 from datetime import datetime, timedelta
+from http import HTTPStatus
 from pathlib import Path
 from typing import Any
 
@@ -26,12 +27,13 @@ GREETING = "lookout-wire is connected. Price alerts will arrive here."
 NOT_ACCEPTED_CODE = 131016
 INVALID_PARAMETER_CODE = 100
 BACKOFF_STATUSES = (SendStatus.RATE_LIMITED, SendStatus.NOT_ACCEPTED)
-RETRY_POLL_STATUSES = (409, 429)
+RETRY_POLL_STATUSES = (HTTPStatus.CONFLICT, HTTPStatus.TOO_MANY_REQUESTS)
 
 
 class WhatsAppMessenger:
-    def __init__(
+    def __init__(  # noqa: PLR0913 -- adapter configuration, passed by keyword only
         self,
+        *,
         token: str,
         base_url: str,
         state_path: Path,
@@ -123,11 +125,11 @@ class WhatsAppMessenger:
             logger.warning("WhatsApp poll failed (%s). Retrying.", type(error).__name__)
             self._stop.wait(self._poll_retry_wait)
             return None
-        if response.status_code == 200:
+        if response.status_code == HTTPStatus.OK:
             return response.json()
-        if response.status_code == 204:
+        if response.status_code == HTTPStatus.NO_CONTENT:
             return None
-        if response.status_code in RETRY_POLL_STATUSES or response.status_code >= 500:
+        if response.status_code in RETRY_POLL_STATUSES or response.is_server_error:
             logger.warning("WhatsApp poll returned HTTP %s. Retrying.", response.status_code)
             self._stop.wait(self._poll_retry_wait)
             return None
@@ -177,24 +179,28 @@ def classify(response: httpx.Response) -> SendOutcome:
     if response.is_success:
         return SendOutcome(SendStatus.SENT, f"HTTP {status} message {message_id(response)}")
     code, message = error_fields(response)
-    detail = f"HTTP {status} code {code}"
     if is_invalid_token(status, code, message):
         raise FatalError(invalid_token_text(status, message))
-    if status == 429:
-        return SendOutcome(SendStatus.RATE_LIMITED, detail)
-    if status == 503 and code == NOT_ACCEPTED_CODE:
-        return SendOutcome(SendStatus.NOT_ACCEPTED, detail)
-    if status == 403:
-        return SendOutcome(SendStatus.REJECTED_RECIPIENT, detail)
-    if 400 <= status < 500:
-        return SendOutcome(SendStatus.OTHER_CLIENT_ERROR, detail)
-    return SendOutcome(SendStatus.UNKNOWN, detail)
+    return SendOutcome(failure_status(response, code), f"HTTP {status} code {code}")
+
+
+def failure_status(response: httpx.Response, code: int | None) -> SendStatus:
+    status = response.status_code
+    if status == HTTPStatus.TOO_MANY_REQUESTS:
+        return SendStatus.RATE_LIMITED
+    if status == HTTPStatus.SERVICE_UNAVAILABLE and code == NOT_ACCEPTED_CODE:
+        return SendStatus.NOT_ACCEPTED
+    if status == HTTPStatus.FORBIDDEN:
+        return SendStatus.REJECTED_RECIPIENT
+    if response.is_client_error:
+        return SendStatus.OTHER_CLIENT_ERROR
+    return SendStatus.UNKNOWN
 
 
 def is_invalid_token(status: int, code: int | None, message: str) -> bool:
-    if status == 401:
+    if status == HTTPStatus.UNAUTHORIZED:
         return True
-    if status != 400 or code != INVALID_PARAMETER_CODE:
+    if status != HTTPStatus.BAD_REQUEST or code != INVALID_PARAMETER_CODE:
         return False
     return not is_field_name(message)
 

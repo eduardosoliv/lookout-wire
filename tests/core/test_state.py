@@ -24,7 +24,7 @@ def test_failed_rename_leaves_previous_file_intact(tmp_path, monkeypatch):
         raise OSError("disk gone")
 
     monkeypatch.setattr(state.os, "replace", fail)
-    with pytest.raises(OSError):
+    with pytest.raises(OSError, match="disk gone"):
         write_json(path, {"version": 2})
     monkeypatch.undo()
 

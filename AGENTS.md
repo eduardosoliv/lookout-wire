@@ -82,7 +82,8 @@ larger change, and the pre-commit reviewer checks against it.
 - **Tests:** no network and no sleeping; use `tests/fakes.py`; write the test first; assert on
   results, not internal calls; name tests for the behavior they check, never with plan codes like
   AE17.
-- **Formatting:** `just fix`; ruff settings live in `pyproject.toml` (line length 100).
+- **Formatting and lint:** `just fix`; ruff settings live in `pyproject.toml` (line length 100)
+  and enforce most of the limits above. A `# noqa` needs a reason after `--`.
 
 ## Messages and timing
 

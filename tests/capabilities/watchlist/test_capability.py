@@ -102,7 +102,8 @@ def test_crossing_dip_and_buy_together_sends_one_message(tmp_path):
     world.capability().run(NOW)
 
     assert len(world.messenger.sent) == 1
-    assert "🔥 Buy" in world.messenger.sent[0] and "⚠️ Dip" not in world.messenger.sent[0]
+    assert "🔥 Buy" in world.messenger.sent[0]
+    assert "⚠️ Dip" not in world.messenger.sent[0]
 
 
 def test_explanation_is_attached_when_available(world):
@@ -254,7 +255,7 @@ def test_failed_marker_write_skips_the_send(world, monkeypatch):
         raise OSError("disk full")
 
     monkeypatch.setattr(module, "save_state", fail)
-    with pytest.raises(OSError):
+    with pytest.raises(OSError, match="disk full"):
         capability.run(NOW)
 
     assert world.messenger.sent == []
@@ -420,12 +421,13 @@ def test_review_3_no_recovery_notice_when_failure_notice_never_arrived(world):
     assert world.messenger.sent == []
 
 
-def test_rate_limited_marker_is_saved_before_the_cycle_ends(world, monkeypatch):
+def test_rate_limited_marker_is_saved_before_the_next_ticker(tmp_path, monkeypatch):
     from lookout_wire.capabilities.watchlist import capability as module
 
-    world.prices.trades = {"AAPL": trade(149.8)}
+    yaml = "tickers:\n  - symbol: AAPL\n    dip: 150\n  - symbol: MSFT\n    dip: 400\n"
+    world = World(tmp_path, yaml=yaml)
+    world.prices.trades = {"AAPL": trade(149.8), "MSFT": trade(399.0)}
     world.messenger.outcomes.append(SendOutcome(SendStatus.RATE_LIMITED))
-    capability = world.capability()
     saved = []
     original = module.save_state
 
@@ -434,10 +436,9 @@ def test_rate_limited_marker_is_saved_before_the_cycle_ends(world, monkeypatch):
         original(path, state)
 
     monkeypatch.setattr(module, "save_state", record)
-    capability._reconcile()
-    capability._check_all(NOW)
+    world.capability().run(NOW)
 
-    assert {"AAPL": Phase.NOT_SENT} in saved
+    assert saved[:2] == [{"AAPL": Phase.IN_FLIGHT}, {"AAPL": Phase.NOT_SENT}]
 
 
 def test_stale_day_not_sent_marker_fetches_a_fresh_explanation(world):
