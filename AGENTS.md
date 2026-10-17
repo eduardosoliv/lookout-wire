@@ -55,10 +55,34 @@ register it in `CAPABILITIES` in `main.py`, and add tests. The main loop should 
 
 ## Coding standards
 
-`coding-standards.md` holds every code and test rule: complexity, function and class size,
-duplication, feature envy, magic values, shared state, naming, dead code, errors, comments, and
-tests. Read it before writing code. The owner's short version: early returns, short functions,
-plain code, and test names that describe behavior.
+The owner wants code that is simple to read and maintain. The rules that matter most while writing
+code are below. `coding-standards.md` has every rule with its limits and examples; read it before a
+larger change, and the pre-commit reviewer checks against it.
+
+- **Low complexity:** early returns instead of nested conditionals; at most two levels of nesting
+  and five decision points per function.
+- **Short code:** a function body around 20 lines; over 30 is a finding unless it is an entry
+  point that only wires parts together. A class has one reason to change; over about 200 lines is a
+  finding. Split a function before it needs a comment to explain a block.
+- **Few parameters:** at most four; group values that travel together into a frozen dataclass.
+  Adapter constructors may take more when every caller passes them by keyword. No boolean flags
+  that switch between two behaviors.
+- **Plain code:** explicit over clever; no abstraction without a current caller.
+- **No duplication:** one rule, calculation, or constant lives in one place.
+- **No feature envy:** logic sits next to the data it uses; `core` never imports adapters or
+  capabilities.
+- **No magic values:** meaningful literals become named UPPER_CASE constants; owner-tunable values
+  go in `core/settings.py`.
+- **No mutable shared state:** frozen dataclasses, constants never mutated, and time, sleep, and
+  I/O injected.
+- **Consistent names:** `symbol` in code, "ticker" in owner-facing text; follow the existing name
+  for an idea before inventing one.
+- **No dead code:** no unused code, commented-out code, or code kept for later.
+- **Comments:** only for a reason the code cannot show, such as a vendor quirk.
+- **Tests:** no network and no sleeping; use `tests/fakes.py`; write the test first; assert on
+  results, not internal calls; name tests for the behavior they check, never with plan codes like
+  AE17.
+- **Formatting:** `just fix`; ruff settings live in `pyproject.toml` (line length 100).
 
 ## Messages and timing
 

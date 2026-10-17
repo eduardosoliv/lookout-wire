@@ -3,6 +3,9 @@
 The rules every change in lookout-wire follows. The owner wants code that is simple to read and
 maintain: a reader should understand a function on the first pass, without the plan open.
 
+`AGENTS.md` carries a short summary of these rules; this file is the full version. Change both
+together.
+
 Ruff and `just check` enforce formatting, imports, and some lint. Everything else here is checked
 in review: before each commit, the `coding-standards-reviewer` agent reviews the staged change
 against this file (see `AGENTS.md`).
