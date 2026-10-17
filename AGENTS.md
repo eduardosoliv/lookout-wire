@@ -128,7 +128,10 @@ Before every commit:
 1. Run `just check` (the pre-commit hook runs it again) and stage the files by path, never with
    `git add .`.
 2. Run the `coding-standards-reviewer` subagent (`.claude/agents/`, runs on Sonnet) on the staged
-   change.
+   change. Skip it when `git diff --cached --name-only` lists only Markdown files (`*.md`) and
+   images under `docs/images/`: the standards cover code, so it has nothing to check there.
+   Docstrings and comments in `.py` files, `pyproject.toml`, `justfile`, `.github/`, `.githooks/`,
+   and `.env.example` are not documentation and still get reviewed.
 3. Fix every must-fix finding, stage again, and rerun the reviewer until it returns `PASS`. A
    consider finding may be declined; give the reason in your report to the owner.
 

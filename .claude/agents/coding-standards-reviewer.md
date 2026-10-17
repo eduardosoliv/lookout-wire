@@ -1,6 +1,6 @@
 ---
 name: coding-standards-reviewer
-description: Reviews the staged git change against coding-standards.md before a commit. Use it before every commit in lookout-wire, after `just check` passes and the files are staged. Read-only; returns findings for the implementing agent to fix.
+description: Reviews the staged git change against coding-standards.md before a commit. Use it before every commit in lookout-wire that changes more than Markdown files and docs images, after `just check` passes and the files are staged. Read-only; returns findings for the implementing agent to fix.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
