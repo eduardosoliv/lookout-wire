@@ -18,10 +18,15 @@ def env(monkeypatch, tmp_path):
     return monkeypatch
 
 
-def test_loads_from_prefixed_environment_variables(env):
+@pytest.fixture
+def configured_env(env):
     for name, value in REQUIRED.items():
         env.setenv(name, value)
-    env.setenv("LOOKOUT_INTERVAL_SECONDS", "3")
+    return env
+
+
+def test_loads_from_prefixed_environment_variables(configured_env):
+    configured_env.setenv("LOOKOUT_INTERVAL_SECONDS", "3")
 
     settings = load_settings()
 
@@ -53,27 +58,21 @@ def test_missing_secret_names_variable_without_leaking_other_secrets(env):
     assert "alpaca-secret-value" not in message
 
 
-def test_explanation_disabled_without_gemini_key(env):
-    for name, value in REQUIRED.items():
-        env.setenv(name, value)
+def test_explanation_disabled_without_gemini_key(configured_env):
 
     settings = load_settings()
 
     assert settings.explanation_enabled is False
 
 
-def test_explanation_enabled_with_gemini_key(env):
-    for name, value in REQUIRED.items():
-        env.setenv(name, value)
-    env.setenv("LOOKOUT_GEMINI_API_KEY", "gemini-value")
+def test_explanation_enabled_with_gemini_key(configured_env):
+    configured_env.setenv("LOOKOUT_GEMINI_API_KEY", "gemini-value")
 
     assert load_settings().explanation_enabled is True
 
 
-def test_repr_masks_every_secret(env):
-    for name, value in REQUIRED.items():
-        env.setenv(name, value)
-    env.setenv("LOOKOUT_GEMINI_API_KEY", "gemini-value")
+def test_repr_masks_every_secret(configured_env):
+    configured_env.setenv("LOOKOUT_GEMINI_API_KEY", "gemini-value")
 
     text = repr(load_settings())
 
@@ -81,9 +80,19 @@ def test_repr_masks_every_secret(env):
         assert value not in text
 
 
-def test_loop_runs_every_120_seconds_by_default(env):
-    for name, value in REQUIRED.items():
-        env.setenv(name, value)
-    env.delenv("LOOKOUT_INTERVAL_SECONDS", raising=False)
+def test_loop_runs_every_120_seconds_by_default(configured_env):
+    configured_env.delenv("LOOKOUT_INTERVAL_SECONDS", raising=False)
 
     assert load_settings().interval_seconds == 120
+
+
+def test_explanation_waits_30_seconds_by_default(configured_env):
+    configured_env.delenv("LOOKOUT_EXPLAIN_TIMEOUT_SECONDS", raising=False)
+
+    assert load_settings().explain_timeout_seconds == 30
+
+
+def test_explanation_timeout_can_be_changed(configured_env):
+    configured_env.setenv("LOOKOUT_EXPLAIN_TIMEOUT_SECONDS", "45")
+
+    assert load_settings().explain_timeout_seconds == 45
